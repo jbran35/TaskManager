@@ -1,0 +1,116 @@
+﻿@using BlazorBootstrap
+
+
+@* <DoughnutChart @ref="doughnutChart" Width="300" Height="300" /> *@
+
+@if (IsTile)
+{
+    <div class="ratio ratio-1x1 position-relative">
+
+        <DoughnutChart @ref="doughnutChart" />
+
+        <div class="d-flex flex-column align-items-center justify-content-center"
+             style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+
+            <h3 class="m-0 fw-bold" style="font-size: calc(1.3rem + .6vw);">@PercentComplete%</h3>
+            <small class="text-muted" style="font-size: 0.8em;">Complete</small>
+
+        </div>
+
+    </div>
+}
+
+@if(!IsTile){
+<div style="position: relative; width: 300px; height: 300px; margin: auto;">
+
+    <DoughnutChart @ref="doughnutChart" Width="300" Height="300" />
+
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none;">
+        <h2 class="m-0 fw-bold">@PercentComplete%</h2>
+        <small class="text-muted">Complete</small>
+    </div>
+
+</div>
+}
+
+
+
+@code{
+    //Doughnut Chart Logic
+
+    [Parameter]
+    public double PercentComplete { get; set; }
+
+    [Parameter]
+    public bool IsTile { get; set; } 
+
+    private DoughnutChart doughnutChart = default!;
+    private DoughnutChartOptions doughnutChartOptions = default!;
+    private List<double> projectStats = new List<double> { 2.0};
+    private ChartData chartData = new ChartData();
+
+    private bool isChartInitialized = false;
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Console.WriteLine("Made it to firstRender = true");
+            doughnutChartOptions = new DoughnutChartOptions
+                {
+                    Responsive = true,
+                    Plugins = new DoughnutChartPlugins
+                    {
+                        Tooltip = new ChartPluginsTooltip { Enabled = false },
+                    
+                    }
+                };
+
+
+            chartData = GetChartData();
+            await doughnutChart.InitializeAsync(chartData, doughnutChartOptions);
+
+            isChartInitialized = true;
+        }
+        else
+        {
+            await base.OnAfterRenderAsync(firstRender);
+        }
+
+
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (isChartInitialized && doughnutChart != null)
+        {
+            var data = GetChartData();
+            await doughnutChart.UpdateAsync(data, doughnutChartOptions);
+        }
+    }
+
+    private ChartData GetChartData()
+    {
+        var remaining = 100.00 - PercentComplete;
+        var colors = new List<string> { "#28a745", "#dc3545" }; 
+        var labels = new List<string> { };
+        var data = new List<double?> { PercentComplete, remaining };
+
+        var dataset = new DoughnutChartDataset
+        {
+            Label = "Progress",
+            Data = data,
+            BackgroundColor = colors,
+        
+        };
+
+        return new ChartData
+        {
+            Labels = labels,
+            Datasets = new List<IChartDataset> { dataset }
+        };
+    }
+
+
+}

@@ -1,0 +1,154 @@
+﻿@inject ApiClientService ApiClientService
+@inject NavigationManager NavigationManager
+@inject ProjectStateService ProjectStateService
+
+
+@page "/edit/{ProjectId:guid}"
+@using BlazorBootstrap
+@using System.ComponentModel.DataAnnotations
+@using TaskManager.Application.DTOs.Requests
+@using TaskManager.Application.Projects.DTOs
+@using TaskManager.Application.Projects.DTOs.Responses
+@using TaskManager.Presentation.Services
+
+@rendermode InteractiveServer
+
+
+<style>
+    .valid.modified:not([type=checkbox]) {
+        outline: 1px solid #26b050;
+    }
+
+    .invalid {
+        outline: 1px solid red;
+    }
+
+    .validation-message {
+        color: red;
+    }
+</style>
+
+
+<EditForm EditContext="@editContext">
+    <DataAnnotationsValidator />
+    <div class="mb-3">
+        <label class="form-label">Title:  <span class="text-danger">*</span></label>
+        <InputText class="form-control" placeholder="My New Project..." @bind-Value="model.Title" />
+        <ValidationMessage For="@(() => model.Title)" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Description:</label>
+        <InputTextArea class="form-control" rows="3" placeholder="Enter Project Description" @bind-Value="model.Description" />
+    </div>
+
+</EditForm>
+
+
+<br />
+
+@code {
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+    [Parameter] public Guid ProjectId{ get; set; }
+    private ProjectFormModel updatedProject = new();
+
+    private ProjectFormModel model = new();
+    private EditContext? editContext;
+
+    public class ProjectFormModel
+    {
+        [Required(ErrorMessage = "Name required.")]
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+    }
+
+
+    protected override Task OnInitializedAsync()
+    {
+        editContext = new EditContext(model);
+        return base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadProject();
+    }
+
+    public async Task LoadProject()
+    {
+        var cachedDetails = await ProjectStateService.GetProjectBasicDetails(ProjectId);
+
+
+        if (cachedDetails is not null && cachedDetails.Title is not null && cachedDetails.Description is not null)
+        {
+            model.Title = cachedDetails.Title;
+            model.Description = cachedDetails.Description ?? string.Empty;
+            return;
+        }
+
+        var client = ApiClientService.GetClient();
+        var response = await client.GetAsync("api/projects/" + ProjectId.ToString() + "/details");
+
+        if (response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<ProjectDetailsDto>();
+
+            if (result is not null)
+            {
+                await ProjectStateService.SetProjectBasicDetails(result); 
+
+                model.Title = result.Title.ToString();
+
+                if (result.Description != null) model.Description = result.Description;
+
+                else model.Description = "";
+            }
+        }
+
+        else return;
+    }
+
+    public async Task<ProjectDetailsDto?> UpdateProject()
+    {
+        var isValid = editContext?.Validate() ?? false;
+        if (!isValid) return null;
+
+        var request = new UpdateProjectRequest
+        {
+            Title = model.Title,
+            Description = model.Description
+        };
+
+        var client = ApiClientService.GetClient(); 
+        var response = await client.PatchAsJsonAsync("api/projects/" + ProjectId.ToString(), request);
+
+        if (response is null)
+        {
+            ToastService.Notify(new(ToastType.Danger, "Unexpected Error Editing Project"));
+        }
+
+        else if (response is not null && !response.IsSuccessStatusCode)
+        {
+            var errorResult = await response.Content.ReadAsStringAsync();
+            ToastService.Notify(new(ToastType.Danger, errorResult));
+        }
+
+        else if (response is not null && response.IsSuccessStatusCode)
+        {
+            var successResult = await response.Content.ReadFromJsonAsync<ProjectDetailsDto>();
+
+            if (successResult is not null)
+            {
+                await ProjectStateService.ClearProjectDetails(successResult.Id);
+                await ProjectStateService.ClearProjectTiles();
+                
+                ToastService.Notify(new(ToastType.Success, "Project Updated Successfully!"));
+
+                return successResult;
+            }
+        }
+
+        return null;
+    }
+}

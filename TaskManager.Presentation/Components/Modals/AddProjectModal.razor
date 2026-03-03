@@ -1,0 +1,60 @@
+﻿@using BlazorBootstrap
+@using TaskManager.Application.DTOs
+@using TaskManager.Application.Projects.DTOs
+@using TaskManager.Application.Projects.DTOs.Responses
+@using TaskManager.Presentation.Components.Pages
+@using TaskManager.Presentation.Services
+@inject ProjectStateService ProjectStateService
+
+
+
+@* Add Project Modal *@
+
+<Modal @ref="addProjectModal" Title="Add Project"  Size="ModalSize.Large">
+    <BodyTemplate>
+        <NewProject @ref="_addProjectForm"></NewProject>
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="OnHideAddProjectModalClick">Cancel</Button>
+        <Button Color="ButtonColor.Dark" @onclick="OnCreateProjectClick" Disabled="CreateButtonClicked">Create</Button>
+    </FooterTemplate>
+</Modal>
+
+
+@code{
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+
+    [Parameter] public EventCallback<ProjectTileDto> OnProjectCreated { get; set; }
+
+    private bool CreateButtonClicked = false; 
+    private Modal addProjectModal = new Modal();
+    private NewProject _addProjectForm;
+
+    public async Task OnAddProjectModalClick()
+    {
+        await addProjectModal.ShowAsync();
+        Console.WriteLine("Made it to OnAddProjectModalClick");
+    }
+
+    private async Task OnHideAddProjectModalClick()
+    {
+        await addProjectModal.HideAsync();
+    }
+
+    private async Task OnCreateProjectClick()
+    {
+        CreateButtonClicked = true;
+        var response = await _addProjectForm.CreateProject();
+
+        await addProjectModal.HideAsync();
+        CreateButtonClicked = false; 
+
+        if (response is not null)
+        {
+            await OnProjectCreated.InvokeAsync(response);
+        }
+    }
+
+
+}

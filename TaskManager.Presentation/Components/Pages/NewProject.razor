@@ -1,0 +1,108 @@
+﻿@inject ApiClientService ApiClientService
+@inject NavigationManager NavigationManager
+@inject ProjectStateService ProjectStateService
+
+@page "/newproject"
+@using BlazorBootstrap
+@using System.ComponentModel.DataAnnotations
+@using TaskManager.Application.DTOs.Requests
+@using TaskManager.Application.Projects.DTOs
+@using TaskManager.Application.Projects.DTOs.Responses
+@using TaskManager.Presentation.Services
+
+<style>
+    .valid.modified:not([type=checkbox]) {
+        outline: 1px solid #26b050;
+    }
+
+    .invalid {
+        outline: 1px solid red;
+    }
+
+    .validation-message {
+        color: red;
+    }
+</style>
+
+
+<EditForm EditContext="@editContext">
+    <DataAnnotationsValidator />
+    <div class="mb-3">
+        <label class="form-label">Title:  <span class="text-danger">*</span></label>
+        <InputText class="form-control" placeholder="My New Project..." @bind-Value="model.Name" />
+        <ValidationMessage For="@(() => model.Name)" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Description:</label>
+        <InputTextArea class="form-control" rows="3" placeholder="Enter Project Description" @bind-Value="model.Description" />
+    </div>
+
+</EditForm>
+
+<br />
+
+@code {
+    private string projectName = string.Empty;
+    private string description = string.Empty;
+    private string message = string.Empty;
+
+    private ProjectFormModel model = new();
+    private EditContext? editContext;
+
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+    public class ProjectFormModel
+    {
+        [Required (ErrorMessage = "Title required.")]
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+
+    }
+
+    protected override Task OnInitializedAsync()
+    {
+        editContext = new EditContext(model);
+        return base.OnInitializedAsync();
+    }
+
+
+    public async Task<ProjectTileDto?> CreateProject()
+    {
+
+        var isValid = editContext?.Validate() ?? false;
+
+        if (!isValid) return null;
+
+        var request = new CreateProjectRequest
+        {
+            Title = model.Name,
+            Description = model.Description
+        };
+
+        var client = ApiClientService.GetClient();
+        var response = await client.PostAsJsonAsync("api/projects/", request);
+
+        if (response is null)
+        {
+            ToastService.Notify(new(ToastType.Danger, "Unexpected Error Creating Project"));
+        }
+
+        else if (response is not null && !response.IsSuccessStatusCode)
+        {
+            var errorResult = await response.Content.ReadAsStringAsync();
+            ToastService.Notify(new(ToastType.Danger, errorResult));
+        }
+
+        else if (response is not null && response.IsSuccessStatusCode)
+        {
+            var successResult = await response.Content.ReadFromJsonAsync<ProjectTileDto>();
+
+            if (successResult is not null)
+                return successResult; 
+        }
+
+        return null;
+    }
+}
+

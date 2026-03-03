@@ -1,0 +1,58 @@
+﻿@using BlazorBootstrap
+@using TaskManager.Application.Projects.DTOs
+@using TaskManager.Application.Projects.DTOs.Responses
+@using TaskManager.Presentation.Components.Pages
+@using TaskManager.Presentation.Services
+
+@inject ProjectStateService ProjectTileState
+@inject ProjectStateService ProjectDetailsState
+
+
+<Modal @ref="editProjectModal" Title="Edit Project">
+    <BodyTemplate>
+        <EditProject @ref="_editProjectForm" ProjectId="@ProjectId"></EditProject>
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="OnHideModalClick" Type="ButtonType.Button">Cancel</Button>
+        <Button Color="ButtonColor.Dark" Type="ButtonType.Submit" @onclick="OnUpdateProjectClick" Disabled="IsUpdateClicked">Update</Button>
+    </FooterTemplate>
+</Modal>
+
+@code {
+    [Parameter] public required Guid ProjectId { get; set; }
+
+    [Parameter] public EventCallback<ProjectDetailsDto> OnProjectUpdated { get; set; }
+
+    private bool IsUpdateClicked = false;
+    public EditProject _editProjectForm;
+
+    private Modal editProjectModal = default!;
+
+    //Edit Project Modal Methods
+
+    public async Task OnShowEditProjectModalClick()
+    {
+        await editProjectModal.ShowAsync();
+    }
+
+    public async Task OnHideModalClick()
+    {
+        Console.WriteLine("Made it to hide modal method");
+        await editProjectModal.HideAsync();
+        StateHasChanged(); 
+    }
+
+    private async Task OnUpdateProjectClick()
+    {
+        IsUpdateClicked = true; 
+        var response = await _editProjectForm.UpdateProject(); 
+
+        //Response will only not be null if the action was successful
+        if(response is not null)
+        {  
+            await editProjectModal.HideAsync();
+            await OnProjectUpdated.InvokeAsync(response);
+        }
+        IsUpdateClicked = false;
+    }
+}

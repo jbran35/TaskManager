@@ -1,0 +1,496 @@
+﻿@page "/project/{ProjectId:guid}"
+
+@using BlazorBootstrap
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using TaskManager.Application.DTOs
+@using TaskManager.Application.DTOs.Requests
+@using TaskManager.Application.Projects.DTOs
+@using TaskManager.Application.Projects.DTOs.Responses
+@using TaskManager.Application.TodoItems.DTOs
+@using TaskManager.Application.TodoItems.DTOs.Responses
+@using TaskManager.Application.UserConnections.DTOs
+@using TaskManager.Application.UserConnections.DTOs.Requests
+@using TaskManager.Domain.Enums
+@using TaskManager.Presentation.Components.Modals
+@using TaskManager.Presentation.Components.Tiles
+@using TaskManager.Presentation.Services
+@using TaskManager.Presentation.Enums
+
+
+@inject ApiClientService ApiClientService
+@inject NavigationManager NavManager
+@inject IJSRuntime JSRuntime
+@inject ProjectStateService ProjectStateService
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+
+    <PageTitle>@projectName</PageTitle>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <Card Class="h-100">
+                <div class="position-absolute top-0 end-0 p-2">
+                    <Button Type="ButtonType.Button" @onclick="OnShowEditProjectModalClick" class="p-0">
+                        <Icon Name="IconName.PencilSquare" Color="IconColor.Dark" Size="IconSize.x4" />
+                    </Button>
+                </div>
+
+                <CardBody>
+                @if (!isLoading)
+                {
+                    <h4 class="d-flex justify-content-center" style="text-decoration: underline;">@projectName</h4>
+                    <h6 class="d-flex justify-content-center text-muted"> @completeTasks / @totalTasks </h6>
+                    <br />
+                    <p> @projectDescription</p>
+                }
+
+                </CardBody>
+            
+            </Card>
+        </div>
+
+        <div class="col-md-6">
+        
+            <Card Class="h-100">
+                <CardBody Class="d-flex justify-content-center">
+                @if (!isLoading)
+                    {
+                    <ProgressGraph @ref="progressGraph" PercentComplete="@percentComplete" IsTile="false" />
+                    }
+
+                </CardBody>
+            </Card>
+        
+        </div>
+    </div>
+
+
+@if (isLoading)
+{
+    <body>
+        <div class="container page-center">
+            <div class="d-flex justify-content-center align-items-center vh-100">
+                <Spinner Type="SpinnerType.Dots" Class="me-3" Color="SpinnerColor.Primary" />
+            </div>
+        </div>
+    </body>
+
+}
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div style="color: red; padding: 10px; border: 1px solid red; margin: 10px 0;">
+        <strong>Error:</strong> @errorMessage
+        <br />
+        <a href="/login">Go to Login</a>
+    </div>
+}
+
+<div class="d-flex mb-3 gap-2">
+   
+    <input type="search"
+           class="form-control flex-grow-1"
+           placeholder="Search Tasks..."
+           @bind="taskFilter"
+           @bind:event="oninput" />
+
+    <Button Type="ButtonType.Button" @onclick="OnAddTaskModalClick">
+        <Icon Name="IconName.PlusCircleFill" Size="IconSize.x4" />
+    </Button>
+        
+    </div>
+
+<hr />
+
+                                    
+@* Task Table/Grid *@
+
+<div class="table-responsive w-100 align-content-center">
+
+    <QuickGrid Items="@FilteredTasks" Pagination="@pagination" Virtualize="false">
+
+        <TemplateColumn Context="task" Align="Align.Center">
+            <HeaderTemplate>
+
+                <div class="d-flex justify-content-center w-100">
+                    <Icon Name="IconName.Check2Circle" Size="IconSize.x4" />
+                </div>
+
+            </HeaderTemplate>
+
+            <ChildContent Context="task">
+
+                <Button Type="ButtonType.Button"
+                        Class="p-0 border-0 shadow-none"
+                        @onclick="@(() => UpdateTodoItemStatus(task.Id))">
+
+                    @if (task.Status == Status.Complete)
+                    {
+                        <Icon Name="IconName.CheckCircleFill" Size="IconSize.x5" Color="IconColor.Dark" />
+                    }
+                    else
+                    {
+                        <Icon Name="IconName.Circle" Size="IconSize.x5" Color="IconColor.Secondary" />
+                    }
+
+                </Button>
+            </ChildContent>
+
+            </TemplateColumn>
+            <PropertyColumn Property="@(t => t.Title)" Title="Task Name" Sortable="true" Align="Align.Left" />
+            <PropertyColumn Property="@(t => t.Priority)" Title="Priority" Sortable="true" Align="Align.Center" />
+            <PropertyColumn Property="@(t => t.AssigneeName)" Title="Assignee" Sortable="true" Align="Align.Center" />
+
+            <TemplateColumn Title="Due Date" Sortable="true" Context="task">
+                @if (task.DueDate.HasValue)
+                {
+                    @task.DueDate.Value.ToString("d")
+                }
+                else
+                {
+                    <span>&mdash;</span>
+                }
+
+            </TemplateColumn>
+            <PropertyColumn Property="@(t => t.Status)" Title="Status" Sortable="true" />
+
+
+            <TemplateColumn Context="task" Title="Actions" Align="Align.Center">
+
+                <Button Type="ButtonType.Link" @onclick="@(() => OnShowDetailsModalClick(task))">
+                        <Icon Name="IconName.EyeFill" Size="IconSize.x5"></Icon>
+                </Button>
+
+                <Button Type="ButtonType.Link" @onclick="@(() => OnShowEditModalClick(task))">
+                    <Icon Name="IconName.PencilSquare" Size="IconSize.x5"></Icon>
+                </Button>
+
+            <Button Type="ButtonType.Link" @onclick="@(() => OnShowDeleteModalClick(task.Id, task.Title))">
+                <Icon Name="IconName.Trash3Fill" Size="IconSize.x5"></Icon>
+            </Button>
+
+            </TemplateColumn>
+        </QuickGrid>
+
+    @if (tasks is null || !tasks.Any())
+    {
+        <p style="text-align: center">No Tasks Found.</p>
+
+    }
+    </div>
+
+    <Paginator State="pagination" />
+
+@code{
+
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+    // private bool showCompleted = false; 
+    private ProgressGraph progressGraph = default!;
+    // private DoughnutChart doughnutChart = default!;
+    // private DoughnutChartOptions doughnutChartOptions = default!;
+    // private ChartData chartData = new ChartData();
+
+    // private bool isChartInitialized = false;
+    // private bool isChecked = false;
+
+    private void RecalculateProgress()
+    {
+        if (taskList is null || !taskList.Any())
+        {
+            totalTasks = 0;
+            completeTasks = 0;
+            percentComplete = 0.0;
+            return;
+        }
+
+        totalTasks = taskList.Count;
+        completeTasks = taskList.Count(t => t.Status == Status.Complete);
+
+        if (totalTasks > 0)
+            percentComplete = Math.Round(((double)completeTasks / totalTasks) * 100.00, 2);
+
+        else
+            percentComplete = 0.0;
+        
+       //StateHasChanged();
+    }
+}
+                                                @*MODALS*@
+
+    <DeleteTodoItemModal @ref="deleteTodoModal" OnTodoItemDeleted="DeleteTodoItemEntry" ProjectId="ProjectId"> </DeleteTodoItemModal>
+    <TodoItemDetailsModal @ref="detailsModal" OnEditClick="OnEditFromDetailsClick" isOwner="true"> </TodoItemDetailsModal>
+    <EditTodoItemModal @ref="editTodoItemModal" ProjectId="ProjectId" OnTodoItemUpdated="OnUpdateTodoItemClick" OnShowNewAssigneeModalClick="OnShowAssigneeModal"> </EditTodoItemModal>
+    <NewAssigneeModal @ref="newAssigneeModal" OnCanceled="OnNewAssigneeCanceled" OnAssigneeSaved="OnAssigneeSaved"> </NewAssigneeModal>
+    <AddTodoItemModal @ref="addTodoItemModal" ProjectId="ProjectId" OnTodoItemCreated="OnTodoItemCreated" OnShowNewAssigneeModalClick="OnShowAssigneeModal"> </AddTodoItemModal>
+    <EditProjectModal @ref="editProjectModal" ProjectId="ProjectId" OnProjectUpdated="OnProjectUpdated"></EditProjectModal>
+
+    @code{
+
+    private DeleteTodoItemModal deleteTodoModal = default!;
+    private TodoItemDetailsModal detailsModal = default!; 
+    private EditTodoItemModal editTodoItemModal = default!; 
+    private AddTodoItemModal addTodoItemModal = default!;
+    private NewAssigneeModal newAssigneeModal = default!;
+    private EditProjectModal editProjectModal = default!; 
+
+    private TodoItemModel model { get; set;} = new TodoItemModel(); 
+
+    private async Task OnProjectUpdated(ProjectDetailsDto response)
+    {
+
+        if(response is not null)
+        {
+            projectName = response.Title;
+            projectDescription = response.Description ?? string.Empty;
+
+            var newCachedDetails = new ProjectDetailsDto
+            {
+                //ProjectId, ProjectName, Status, Description, TotalTodoItemsCount, CompletedTodoItemsCount, PercentComplete, List of Tasks (TaskListEntryDto)
+                Id = ProjectId,
+                Title = projectName,
+                Description = projectDescription,
+            };
+
+            //await ProjectStateService.SetProjectBasicDetails(newCachedDetails);
+        }
+
+        //StateHasChanged();
+    }
+
+    private async Task OnShowEditProjectModalClick()
+    {
+        await editProjectModal.OnShowEditProjectModalClick();
+    }
+
+    //Runs when the user saves the new assignee/user connection
+    private async Task OnAssigneeSaved(NewAssigneeCallingOriginEnum origin)
+    {
+
+        if (origin == NewAssigneeCallingOriginEnum.AddTodoItem)
+            await addTodoItemModal.RestoreAddTodoItemModal();
+
+        if (origin == NewAssigneeCallingOriginEnum.EditTodoItem)
+        {
+            await editTodoItemModal.RestoreEditTodoItemModal();
+        }
+    }
+
+    private async Task OnNewAssigneeCanceled(NewAssigneeCallingOriginEnum origin)
+    {
+
+        if(origin == NewAssigneeCallingOriginEnum.AddTodoItem)
+            await addTodoItemModal.RestoreAddTodoItemModal();
+
+        if (origin == NewAssigneeCallingOriginEnum.EditTodoItem)
+            await editTodoItemModal.RestoreEditTodoItemModal();
+
+    }
+
+    private async Task OnShowAssigneeModal(NewAssigneeCallingOriginEnum origin)
+    {
+        if (origin == NewAssigneeCallingOriginEnum.AddTodoItem)
+        {
+            await addTodoItemModal.OnHideAddTaskModalClick();
+        }
+
+        if (origin == NewAssigneeCallingOriginEnum.EditTodoItem)
+            await editTodoItemModal.OnHideEditModalClick();
+
+        await newAssigneeModal.OnShowNewAssigneeModal(origin);
+    }
+
+    private async Task OnShowEditModalClick(TodoItemEntry todoItem)
+    {
+        await editTodoItemModal.OnShowEditModalClick(todoItem);
+    }
+
+    private async Task OnEditFromDetailsClick(TodoItemEntry todoItem)
+    {
+        await editTodoItemModal.OnShowEditModalClick(todoItem);
+
+    }
+
+    private async Task OnUpdateTodoItemClick()
+    {
+        taskList = await ProjectStateService.GetProjectTodoItems(ProjectId);
+
+        if (taskList is not null)
+        {
+            tasks = taskList.AsQueryable();
+        }
+
+        RecalculateProgress();
+    }
+
+    private async Task OnAddTaskModalClick()
+    {
+        await addTodoItemModal.OnAddTaskModalClick(ProjectId);
+    }
+
+    private async Task OnTodoItemCreated()
+    {
+        taskList = await ProjectStateService.GetProjectTodoItems(ProjectId);
+
+        if (taskList is not null)
+            tasks = taskList.AsQueryable();
+
+        RecalculateProgress();
+
+    }
+
+    private async Task RefreshFromCache()
+    {
+        var details = await ProjectStateService.GetProjectDetails(ProjectId);
+
+        if (details is not null)
+        {
+            RefreshProjectDetails(details);
+        }
+    }
+
+
+    private async Task OnShowDetailsModalClick(TodoItemEntry todoItem)
+    {
+        await detailsModal.OnShowDetailsModalClick(todoItem);
+    }
+
+    private async Task OnShowDeleteModalClick(Guid todoItemId, string todoItemTitle)
+    {
+        await deleteTodoModal.OnShowDeleteModalClick(todoItemId, todoItemTitle);
+    }
+
+    private async Task DeleteTodoItemEntry()
+    {
+        if (taskList is not null)
+        {
+            taskList = await ProjectStateService.GetProjectTodoItems(ProjectId);
+            if(taskList is not null)
+                tasks = taskList.AsQueryable();
+
+            RecalculateProgress();
+        }
+
+    }
+
+    private async Task OnGoHomeClick()
+    {
+        NavManager.NavigateTo("/projects");
+    }
+}
+
+
+@code {
+    [Parameter] public Guid ProjectId { get; set; } 
+    private string projectName = string.Empty; 
+    private string projectDescription = string.Empty;
+    private int totalTasks = 0; 
+    private int completeTasks = 0; 
+    private double percentComplete = 0.0;
+
+    private string taskFilter = string.Empty;
+    private PaginationState pagination = new PaginationState { ItemsPerPage = 10};
+    private IQueryable<TodoItemEntry>? tasks;
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+    private ProjectDetailedViewDto? projectDetails; 
+    private List<TodoItemEntry>? taskList;
+
+
+    private IQueryable<TodoItemEntry> FilteredTasks =>
+       tasks?.Where(t => t.Title!.Contains(taskFilter, StringComparison.OrdinalIgnoreCase)) ??
+       Enumerable.Empty<TodoItemEntry>().AsQueryable();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProject();
+        RecalculateProgress(); 
+    }
+
+    private async Task UpdateTodoItemStatus (Guid todoItemId)
+    {
+        var client = ApiClientService.GetClient();
+        var response = await client.PatchAsync($"api/todoitems/UpdateStatus/{todoItemId}", null);
+
+        if (!response.IsSuccessStatusCode) return;
+
+        var result = await response.Content.ReadFromJsonAsync<TodoItemEntry>();
+
+        if (result is not null)
+        {
+            await ProjectStateService.UpdateTodoItemStatus(ProjectId, result.Id);
+            await RefreshFromCache();
+
+            RecalculateProgress();
+        }
+    }
+
+    private void RefreshProjectDetails(ProjectDetailedViewDto newDetails)
+    {
+        //taskList = new List<TodoItemListEntryDto>(); 
+        if (newDetails is not null && newDetails.TodoItems is not null)
+        {
+            //projectDetails = newDetails;
+
+            projectName = newDetails.Title;
+            projectDescription = newDetails.Description ?? string.Empty;
+            totalTasks = newDetails.TotalTodoItemCount;
+            completeTasks = newDetails.CompleteTodoItemCount;
+            percentComplete = totalTasks > 0
+                ? Math.Round((double)completeTasks / totalTasks * 100, 2)
+                : 0;
+
+            //Id, Title, ProjectTitle, AssigneeName, OwnerName, Priority, DueDate, CreatedOn, Status
+            taskList = new List<TodoItemEntry>(newDetails.TodoItems
+                .Select(t => new TodoItemEntry
+                {
+                    Id = t.Id, 
+                    AssigneeId = t.AssigneeId,
+                    OwnerId = t.OwnerId,
+                    Title = t.Title, 
+                    Description = t.Description,
+                    ProjectTitle = t.ProjectTitle, 
+                    AssigneeName = t.AssigneeName, 
+                    OwnerName = t.OwnerName, 
+                    Priority = t.Priority,
+                    DueDate = t.DueDate, 
+                    CreatedOn = t.CreatedOn, 
+                    Status = t.Status
+                }).ToList());
+
+            tasks = taskList.AsQueryable();
+        }
+    }
+
+    private async Task LoadProject()
+    {
+        var pid = ProjectId;
+        projectDetails = await ProjectStateService.GetProjectDetails(ProjectId);
+
+        if(projectDetails is not null && !projectDetails.IsExpired)
+        {
+            RefreshProjectDetails(projectDetails);
+        }
+
+        //Check that the project is in cache > If TodoItemList is null - it hasn't been pulled from API > If Empty - has been pulled but there are no TodoItems.
+        if (projectDetails is null || !projectDetails.IsComplete || projectDetails.TodoItems is null || projectDetails.IsExpired)
+        {
+
+            var client = ApiClientService.GetClient();
+
+            var response = await client.GetAsync("api/projects/" + ProjectId.ToString() + "/tasks");
+            if (response is not null && response.IsSuccessStatusCode)
+            {
+                var projectDetails = await response.Content.ReadFromJsonAsync<ProjectDetailedViewDto>();
+
+                if (projectDetails is not null)
+                {
+                    RefreshProjectDetails(projectDetails);
+                    await ProjectStateService.SetAllProjectDetails(projectDetails);
+                }
+            }
+        }
+
+        isLoading = false;
+        RecalculateProgress();
+    }
+}

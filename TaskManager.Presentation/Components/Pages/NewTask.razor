@@ -1,0 +1,210 @@
+﻿@page "/project/{ProjectId:guid}/newtask"
+@using BlazorBootstrap
+@using System.ComponentModel.DataAnnotations
+@using TaskManager.Application.Projects.DTOs.Requests
+@using TaskManager.Application.Projects.DTOs.Responses
+@using TaskManager.Application.TodoItems.DTOs
+@using TaskManager.Application.TodoItems.DTOs.Requests
+@using TaskManager.Application.UserConnections.DTOs
+@using TaskManager.Application.UserConnections.DTOs.Requests
+@using TaskManager.Domain.Entities
+@using TaskManager.Domain.Enums
+@using TaskManager.Presentation.Components.Modals
+@using TaskManager.Presentation.Components.Models
+@using TaskManager.Presentation.Services
+
+@inject ApiClientService ApiClientService
+@inject NavigationManager NavigationManager
+@inject TodoItemDraftStateService TodoItemDraftStateService
+@inject ProjectStateService ProjectStateService
+
+@rendermode InteractiveServer
+
+
+<style>
+    .valid.modified:not([type=checkbox]) {
+        outline: 1px solid #26b050;
+    }
+
+    .invalid {
+        outline: 1px solid red;
+    }
+
+    .validation-message {
+        color: red;
+    }
+</style>
+
+<EditForm EditContext="@editContext">
+    <DataAnnotationsValidator />
+    <div class="mb-3">
+        <label class="form-label">Name:  <span class="text-danger">*</span></label>
+        <InputText class="form-control" placeholder="My New Task..." @bind-Value="validationModel.Title" />
+        <ValidationMessage For="@(() => validationModel.Title)" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Description:</label>
+        <InputTextArea class="form-control" rows="3" placeholder="Enter Task Description..." @bind-Value="validationModel.Description" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Assignee:</label>
+        <div class="d-flex mb-3 gap-2">
+            <select class="form-control" @bind="validationModel.AssigneeId">
+                <option value="">-- Select Assignee --</option>
+                @foreach (var assignee in assignees)
+                {
+                    <option value="@assignee.AssigneeId">
+                        @assignee.AssigneeFullName - @assignee.AssigneeEmail
+                    </option>
+                }
+            </select>
+
+            <Button Color="ButtonColor.Dark" @onclick="OnShowNewAssigneeModal"><Icon Name="IconName.PersonAdd" /></Button>
+        </div>
+    </div>
+
+    <div>
+        <label class="form-label">Priority:</label>
+
+        <select class="form-control" @bind="validationModel.Priority">
+            <option value="@TaskManager.Domain.Enums.Priority.None"> None </option>
+            @foreach (var item in priorityOptions.Where(p => p != TaskManager.Domain.Enums.Priority.None))
+            {
+                <option value="@item">@item</option>
+            }
+
+        </select>
+    </div>
+
+    <br />
+
+    <label class="form-label">Due Date:</label>
+    <div class="mb-3">
+        <input type="date"
+               class="form-control"
+               @bind="validationModel.DueDate" />
+    </div>
+
+</EditForm>
+
+<br />
+
+@code {
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+    [Parameter] public Guid ProjectId { get; set; }
+    [Parameter] public EventCallback OnShowNewAssigneeModalClick { get; set; }
+    [Parameter] public EventCallback<Guid> OnRestoreNewTodoItemModal { get; set; }
+
+    private EditContext? editContext;
+    private ValidationModel validationModel = new ValidationModel();
+    public Domain.Enums.Priority[] priorityOptions = Enum.GetValues<Domain.Enums.Priority>();
+    public TodoItemModel Model { get; set; } = new TodoItemModel();
+    public List<UserConnectionDto> assignees { get; set; } = new List<UserConnectionDto>();
+    // private NewAssigneeModal newAssigneeModal = default!;
+
+
+    protected async override Task OnInitializedAsync()
+    {
+        editContext = new EditContext(validationModel);
+        await LoadAssigneesAsync(); 
+    }
+
+    public async Task LoadAssigneesAsync()
+    {
+        var client = ApiClientService.GetClient();
+        var response = await client.GetAsync($"api/Account/assignees");
+
+        if (response is not null && response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<List<UserConnectionDto>>();
+
+            if (result is not null)
+                assignees = result;
+        }
+
+        //StateHasChanged();
+    }
+
+    public async Task OnShowNewAssigneeModal()
+    {
+        Model.Title = validationModel.Title;
+        Model.Description = validationModel.Description;
+        Model.AssigneeId = validationModel.AssigneeId;
+        Model.ProjectId = ProjectId; 
+        Model.Priority = validationModel.Priority;
+        Model.DueDate = validationModel.DueDate;
+
+        TodoItemDraftStateService.SetModelInCache(Model);
+
+        await OnShowNewAssigneeModalClick.InvokeAsync();
+    }
+
+    public async Task CreateTask()
+    {
+        //Name, ProjectId, ProjectName, Description, AssigneeId, Status, Priority, DueDate
+        var isValid = editContext?.Validate() ?? false;
+        if (!isValid) return;
+
+        if (validationModel.AssigneeId == Guid.Empty)
+            validationModel.AssigneeId = null; //To show explicit unassigned status
+
+        var request = new CreateTodoItemRequest
+        {
+            Title = validationModel.Title,
+            ProjectId = ProjectId,
+            Description = validationModel.Description,
+            AssigneeId = validationModel.AssigneeId,
+            Priority = validationModel.Priority,
+            DueDate = validationModel.DueDate,
+        };
+
+
+        var client = ApiClientService.GetClient();
+
+        var response = await client.PostAsJsonAsync("api/Projects/" + ProjectId + "/tasks", request);
+
+        if (response is null)
+        {
+            ToastService.Notify(new(ToastType.Danger, "Unexpected Error Adding Task"));
+            return;
+        }
+
+        else if (!response.IsSuccessStatusCode)
+        {
+            ToastService.Notify(new(ToastType.Danger, await response.Content.ReadAsStringAsync()));
+            return;
+        }
+
+        var result = await response.Content.ReadFromJsonAsync<TodoItemEntry>();
+
+        if(result is null)
+        {
+            return;
+        }
+
+        ToastService.Notify(new(ToastType.Success, "Task Created Successfully!"));
+        await ProjectStateService.SetTodoItemInProject(ProjectId, result);
+    }
+
+    public void RestoreForm()
+    {
+        var model = TodoItemDraftStateService.GetModelFromCache();
+
+        if (model is not null)
+        {
+            validationModel.Title = model.Title ?? string.Empty;
+            validationModel.Description = model.Description ?? string.Empty;
+            validationModel.AssigneeId = model.AssigneeId ?? Guid.Empty;
+            validationModel.Priority = model.Priority ?? Domain.Enums.Priority.None;
+            validationModel.DueDate = model.DueDate ?? null;
+        }
+
+        editContext = new EditContext(validationModel);
+
+        Console.WriteLine(Model.Description);
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,90 @@
+﻿@using BlazorBootstrap
+@using TaskManager.Application.Users.DTOs
+@using TaskManager.Application.Users.DTOs.Responses
+@using TaskManager.Presentation.Services
+@inject ApiClientService ApiClientService
+
+
+<p>Email:</p>
+<div>
+    <div class="d-flex mb-3 gap-2">
+        <input type="text"
+               class="form-control"
+               placeholder="johndoe@gmail.com"
+               @bind="email"
+               disabled = "@disabled"/>
+
+    <Button Color="ButtonColor.Dark" @onclick="SearchForUser" Disabled="@disabled"><Icon Name="IconName.Search" /></Button>
+
+    </div>
+</div>
+
+@code {
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+    // private bool userFound = false;
+    private bool disabled = false;
+    private string firstName = string.Empty;
+    private string lastName = string.Empty;
+    private string email = string.Empty;
+    private Guid AssigneeId { get; set; } = Guid.Empty;
+
+    public async Task SearchForUser()
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            ToastService.Notify(new(ToastType.Danger, "Please Enter An Email"));
+            return;
+        }
+
+        var client = ApiClientService.GetClient(); 
+        var response = await client.GetAsync($"api/Account/Search/{email}");
+
+        if (response is null)
+        {
+            ToastService.Notify(new(ToastType.Danger, "Unexpected Error Adding Assignee To Your Group"));
+            return;
+        }
+
+        else if (!response.IsSuccessStatusCode)
+        {
+            var errorMessage = await response.Content.ReadAsStringAsync(); 
+            ToastService.Notify(new(ToastType.Danger, errorMessage));
+            return; 
+        }
+
+        var result = await response.Content.ReadFromJsonAsync<GetUserResponse>();
+
+        if(result is null)
+        {
+            ToastService.Notify(new(ToastType.Danger, "Unexpected Error Adding Assignee To Your Group"));
+            return;
+        }
+
+        firstName = result.FirstName;
+        lastName = result.LastName; 
+        email = result.Email;
+        AssigneeId = result.Id;
+
+        disabled = true;
+        ToastService.Notify(new(ToastType.Success, "User Found!"));
+
+        return;
+    }
+
+    public async Task<GetUserResponse> GetUserDetails()
+    {
+        var assignee = new GetUserResponse
+            {
+                FirstName = firstName,
+                LastName = lastName,
+                Email = email,
+                Id = AssigneeId
+            };
+
+        if (assignee is null || assignee.Id == Guid.Empty)
+            return new GetUserResponse(); 
+
+        return assignee; 
+    }
+}

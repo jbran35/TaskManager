@@ -1,0 +1,68 @@
+﻿@page "/login"
+@using BlazorBootstrap
+@using Microsoft.AspNetCore.Components.Authorization
+@using TaskManager.Presentation.Components.Layout
+@inject NavigationManager NavManager
+@inject AuthenticationStateProvider AuthStateProvider
+@layout LoginLayout
+@rendermode InteractiveServer
+
+<div class="container">
+    <div class="d-flex flex-column align-items-center justify-content-start pt-5" style="min-height: 75vh;">
+
+        <Card Class="w-50">
+            <CardBody>
+                <div class="text-center">
+                    <CardTitle>Login</CardTitle>
+                </div>
+
+                <form method="post" action="/account/login">
+
+                    <AntiforgeryToken />
+
+                    <div class="form-group mb-3">
+                        <label>Username</label>
+                        <input type="text" name="username" class="form-control" required />
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label>Password</label>
+                        <input type="password" name="password" class="form-control" required />
+                    </div>
+
+                    <button type="submit" class="btn btn-dark w-100">Login</button>
+                </form>
+
+            </CardBody>
+        </Card>
+
+        <div class="d-flex justify-content-center align-items-start pt-5">
+            <p> Don't have an account yet? <a href="/register" class="text-primary text-decoration-none fw-bold"> Sign Up </a></p>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <div class="alert alert-danger mt-3 w-50 mx-auto">@ErrorMessage</div>
+}
+
+@code {
+   [Inject] protected ToastService ToastService { get; set; } = default!;
+
+    public string? Error { get; set; }
+
+    public string ErrorMessage => Error == "InvalidCredentials" ? "Login failed. Please check your username and password." : "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            ToastService.Notify(new(ToastType.Success, "Logged In Successfully"));
+        }
+    }
+}
+
+
+

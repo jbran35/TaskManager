@@ -1,0 +1,171 @@
+﻿@page "/mygroup"
+@rendermode InteractiveServer
+@inject ApiClientService ApiClientService
+@inject AssigneeListStateService AssigneeListStateService
+
+@using BlazorBootstrap
+@using TaskManager.Application.DTOs
+@using TaskManager.Application.UserConnections.DTOs
+@using TaskManager.Application.UserConnections.DTOs.Requests
+@using TaskManager.Application.UserConnections.DTOs.Responses
+@using TaskManager.Application.Users.DTOs
+@using TaskManager.Application.Users.DTOs.Responses
+@using TaskManager.Presentation.Components.Modals
+@using TaskManager.Presentation.Components.Tiles
+@using TaskManager.Presentation.Services
+@using TaskManager.Presentation.Enums
+
+
+<h3 style="text-align: center;"> My Group </h3>
+<hr />
+
+<div class="d-flex mb-3 gap-2">
+    <input type="search"
+           class="form-control flex-grow-1"
+           placeholder="Search Users..."
+           @bind="assigneeFilter"
+           @bind:event="oninput" />
+
+    <Button Type="ButtonType.Button" @onclick="OnShowAssigneeModalAsync">
+        <Icon Name="IconName.PlusCircleFill" Size="IconSize.x4" />
+    </Button>
+</div>
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 px-2">
+    @if (!FilteredAssignees.Any() && !isLoading)
+    {
+       <p>No Assignees Found</p>
+    }
+
+    
+    @foreach (var assignee in FilteredAssignees)
+    {
+        <div class="col" @key="assignee.AssigneeId">
+            <AssigneeTile Connection="assignee" OnDeleted="OnDeletedSuccessfully">  </AssigneeTile>
+        </div>
+    }
+
+</div>
+
+<NewAssigneeModal @ref="newAssigneeModal" OnCanceled="OnNewAssigneeCanceled" OnAssigneeSaved="OnAssigneeSaved"> </NewAssigneeModal>
+
+
+@code {
+    private string assigneeFilter = string.Empty;
+    private NewAssigneeModal newAssigneeModal = default!;
+    private bool isLoading = true; 
+
+
+    private string message { get; set; } = string.Empty;
+    private List<UserConnectionDto> Assignees = new(); 
+
+    private IEnumerable<UserConnectionDto> FilteredAssignees =>
+    string.IsNullOrWhiteSpace(assigneeFilter)
+        ? Assignees
+        : Assignees.Where(a =>
+            (a.AssigneeFullName?.Contains(assigneeFilter, StringComparison.OrdinalIgnoreCase) ?? false)).AsQueryable();
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAssigneesAsync();
+        isLoading = false;
+    }
+
+    private async Task LoadAssigneesAsync()
+    {
+        var cachedAssignees = AssigneeListStateService.GetAssigneesFromCache();
+        if (cachedAssignees is not null)
+        {
+            Console.WriteLine("\n Pulling Assignees From Cache");
+            Assignees = cachedAssignees;
+            return;
+        }
+
+        Console.WriteLine("\n Pulling Assignees From API \n");
+
+        var client = ApiClientService.GetClient();
+        var response = await client.GetAsync("api/Account/Assignees");
+
+        if (response is null || !response.IsSuccessStatusCode)
+        {
+            return; 
+        }
+
+        var result = await response.Content.ReadFromJsonAsync<List<UserConnectionDto>>();
+
+        if(result is not null)
+        {
+
+            AssigneeListStateService.SetAssigneesInCache(result); 
+
+            var assignees = result; 
+
+            Assignees = assignees; 
+        }
+    }
+
+
+    private void OnDeletedSuccessfully(UserConnectionDto deletedConnection)
+    {
+        var assigneeToRemove = Assignees.FirstOrDefault(c => c.Id == deletedConnection.Id 
+            && c.AssigneeId == deletedConnection.AssigneeId);
+
+        if (assigneeToRemove is not null)
+        {
+            Assignees.Remove(assigneeToRemove);
+            AssigneeListStateService.RemoveFromCache(deletedConnection);
+
+            //TodoItemStateService.ClearAssigneeFromTodoItems(response.DeletedAssigneeId);
+            StateHasChanged();
+
+        }
+    }
+
+
+    private async Task OnShowAssigneeModalAsync()
+    {
+        await newAssigneeModal.OnShowNewAssigneeModal();
+    }
+
+
+    //Runs when the user goes to search for another user - to see if they exist when adding them as a new assignee
+    private async Task HandleUserFound(GetUserResponse assignee)
+    {
+        var request = new CreateUserConnectionRequest
+        {
+            AssigneeId = assignee.Id,
+        };
+
+
+        var client = ApiClientService.GetClient();
+        var response = await client.PostAsJsonAsync("api/Account/assignees", request);
+
+        if (response is null)
+        {
+
+        }
+        var result = await response.Content.ReadFromJsonAsync<UserConnectionDto>();
+
+
+        AssigneeListStateService.SetAssigneeInCache(result); 
+
+
+    }
+
+    private async Task OnNewAssigneeCanceled(NewAssigneeCallingOriginEnum origin)
+    {
+        await newAssigneeModal.OnHideNewAssigneeModal();
+    }
+
+    //Runs when the user saves the new assignee/user connection
+    private async Task OnAssigneeSaved(NewAssigneeCallingOriginEnum origin)
+    {
+        var cachedAssignees = AssigneeListStateService.GetAssigneesFromCache();
+
+        if (cachedAssignees is not null)
+            Assignees = cachedAssignees;
+
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,307 @@
+﻿@page "/mytasks"
+
+@using BlazorBootstrap
+@using Microsoft.AspNetCore.SignalR.Client
+@using TaskManager.Application.DTOs
+@using TaskManager.Application.TodoItems.DTOs
+@using TaskManager.Application.TodoItems.DTOs.Responses
+@using TaskManager.Domain.Enums
+@using TaskManager.Presentation.Components.Modals
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using TaskManager.Presentation.Services
+
+@inject ApiClientService ApiClientService
+@inject NavigationManager NavManager
+@inject AssignedTodoItemsStateService AssignedTodoItemsStateService
+@inject SignalRConnectionService SignalRConnectionService
+
+
+@rendermode InteractiveServer
+
+<PageTitle>My Tasks</PageTitle>
+
+<h3 style="text-align: center;"> My Tasks </h3>
+<hr />
+
+@if (isLoading)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div style="color: red; padding: 10px; border: 1px solid red; margin: 10px 0;">
+        <strong>Error:</strong> @errorMessage
+        <br />
+        <a href="/login">Go to Login</a>
+    </div>
+}
+else if (tasks is null || !tasks.Any())
+{
+    <h2 Alight="Center"> Uh oh... It doesn't look like you have been assigned any tasks yet!' </h2>
+}
+else
+{
+
+    <div class="d-flex mb-3 gap-2">
+        <input type="search"
+               class="form-control flex-grow-1"
+               placeholder="Search Tasks..."
+               @bind="taskFilter"
+               @bind:event="oninput" />
+
+    </div>
+    <hr />
+
+
+    @* Task Table/Grid *@
+    <div class="table-responsive w-100 align-content-center">
+
+        <QuickGrid Items="@FilteredTasks" Pagination="@pagination" Virtualize="false">
+
+            <TemplateColumn Context="task" Align="Align.Center">
+                <HeaderTemplate>
+
+                    <div class="d-flex justify-content-center w-100">
+                        <Icon Name="IconName.Check2Circle" Size="IconSize.x4" />
+                    </div>
+
+                </HeaderTemplate>
+
+                <ChildContent>
+
+                    <Button Type="ButtonType.Button"
+                            Class="p-0 border-0 shadow-none"
+                            @onclick="@(() => UpdateCompletionStatus(task.Id))">
+
+                        @if (task.Status == Status.Complete)
+                        {
+                            <Icon Name="IconName.CheckCircleFill" Size="IconSize.x5" Color="IconColor.Dark" />
+                        }
+                        else
+                        {
+                            <Icon Name="IconName.Circle" Size="IconSize.x5" Color="IconColor.Secondary" />
+                        }
+
+                    </Button>
+                </ChildContent>
+
+            </TemplateColumn>
+
+            <PropertyColumn Property="@(t => t.Title)" Title="Task Name" Sortable="true" Align="Align.Center" />
+            <PropertyColumn Property="@(t => t.ProjectTitle)" Title="Project" Sortable="true" Align="Align.Center" />
+            <PropertyColumn Property="@(t => t.OwnerName)" Title="Assigner" Sortable="true" Align="Align.Center" />
+
+            <TemplateColumn Title="Due Date" Sortable="true" Context="task" Align="Align.Center">
+                @if (task.DueDate.HasValue)
+                {
+                    @task.DueDate.Value.ToString("d")
+                }
+                else
+                {
+                    <span>&mdash;</span>
+                }
+
+            </TemplateColumn>
+            <PropertyColumn Property="@(t => t.Status)" Title="Status" Sortable="true" Align="Align.Center" />
+
+
+            <TemplateColumn Context="task" Title="Actions" Align="Align.Center">
+
+                <Button Type="ButtonType.Link" @onclick="@(() => OnShowTodoItemDetails(task))">
+                    <Icon Name="IconName.EyeFill" Size="IconSize.x5"></Icon>
+                </Button>
+            </TemplateColumn>
+
+        </QuickGrid>
+
+
+        @if (tasks is null || !tasks.Any())
+        {
+            <p style="text-align: center">No Tasks Found.</p>
+
+        }
+    </div>
+    <Paginator State="pagination" />
+    
+    <TodoItemDetailsModal @ref="detailsModal" isOwner="false"> </TodoItemDetailsModal>
+    <div class="alert @(SignalRConnectionService.IsConnected ? "alert-success" : "alert-danger")">
+        SignalR Status: @SignalRConnectionService.HubState
+    </div>
+
+
+}
+
+@code {
+
+    protected override async Task OnInitializedAsync()
+    {
+        SignalRConnectionService.OnTaskUpdated += HandleStateChanged;
+        await SignalRConnectionService.InitializeConnection();
+        await LoadMyTasks();
+    }
+
+    private async void HandleStateChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            AssignedTodoItemsStateService.Clear();
+            await LoadMyTasks(); 
+            StateHasChanged();   
+        });
+    }
+    //     await LoadMyTasks();
+    //     StateHasChanged();
+    // }
+
+    // private async void HandleTodoItemUpdate()
+    // {
+    //     await InvokeAsync(async () =>
+    //     {
+    //         await LoadMyTasks(); 
+    //         StateHasChanged();   
+    //     });
+    // }
+
+    public async Task Dispose()
+    {
+        SignalRConnectionService.OnTaskUpdated -= HandleStateChanged;
+    }
+
+    private string taskFilter = string.Empty;
+    private PaginationState pagination = new PaginationState { ItemsPerPage = 10 };
+    private IQueryable<TodoItemEntry>? tasks;
+    private List<TodoItemEntry>? taskList;
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+
+    private TodoItemDetailsModal detailsModal = default!;
+
+
+    private IQueryable<TodoItemEntry> FilteredTasks =>
+       tasks?.Where(t => t.Title!.Contains(taskFilter, StringComparison.OrdinalIgnoreCase)) ??
+       Enumerable.Empty<TodoItemEntry>().AsQueryable();
+
+
+
+
+
+
+    private async Task UpdateCompletionStatus(Guid todoItemId)
+    {
+        // var response = await Http.PatchAsync($"api/todoitems/UpdateStatus/{todoItemId}", null);
+        // var result = await response.Content.ReadFromJsonAsync<CompleteTodoItemResponse>();
+
+        // if (!response.IsSuccessStatusCode)
+        // {
+        //     errorMessage = $"Failed to complete task. Status code: {response.StatusCode}";
+        //     return;
+        // }
+
+        // var task = taskList?.FirstOrDefault(t => t.Id == todoItemId);
+
+        // if (task is not null)
+        // {
+        //     if (result.MarkedComplete)
+        //     {
+        //         task.Status = Status.Complete;
+
+        //     }
+
+        //     if (result.MarkedIncomplete)
+        //     {
+        //         task.Status = Status.Incomplete;
+
+        //     }
+
+        //     tasks = taskList.AsQueryable();
+
+        // }
+    }
+
+    private async Task OnShowTodoItemDetails (TodoItemEntry todoItem)
+    {
+        // await detailsModal.OnShowDetailsModalClick(todoItem);
+    }
+
+    // private void RefreshTodoItemList(List<TodoItemEntry> detailedViews)
+    // {
+
+    // }
+
+    private async Task LoadMyTasks()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+
+        var cachedAssigneedItems = AssignedTodoItemsStateService.GetTodoItems(); 
+
+        if (cachedAssigneedItems is not null && cachedAssigneedItems.Any())
+        {
+            taskList = cachedAssigneedItems;
+            tasks = taskList.AsQueryable();
+            isLoading = false;
+            return;
+        }
+           
+        try
+        {
+            var client = ApiClientService.GetClient();
+
+            var response = await client.GetAsync("api/todoitems/MyAssignedTasks");
+
+            // if (response is null)
+            //     ToastService.Notify(new(ToastType.Danger, "Unexpected Error Retrieving Tasks!"));
+
+            // else if (!response.IsSuccessStatusCode)
+            //     ToastService.Notify(new(ToastType.Danger, await response.Content.ReadAsStringAsync()));
+
+
+            @*else*@ if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<List<TodoItemEntry>>();
+
+                if (result is not null)
+                {
+                    //Id, Title, ProjectTitle, AssigneeName, OwnerName, Priority, DueDate, CreatedOn, Status
+
+                    taskList = result.Select(t => new TodoItemEntry
+                    {
+                        Id = t.Id,
+                        Title = t.Title,
+                        Description = t.Description ?? string.Empty,
+                        ProjectTitle = t.ProjectTitle,
+                        OwnerName = t.OwnerName ?? string.Empty,
+                        Priority = t.Priority ?? Domain.Enums.Priority.None,
+                        DueDate = t.DueDate ?? null,
+                        CreatedOn = t.CreatedOn,
+                        Status = t.Status,
+
+                    }).ToList();
+
+                    AssignedTodoItemsStateService.SetTodoItemsAsync(taskList);
+                    tasks = taskList.AsQueryable();
+                }
+                else
+                {
+                    errorMessage = await response.Content.ReadAsStringAsync() ?? "Failed to load tasks";
+                }
+            }
+
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                errorMessage = "Not authorized. Please log in.";
+            }
+            else
+            {
+                errorMessage = $"API returned status code: {response.StatusCode}";
+            }
+        }
+
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception: {ex.Message}");
+            errorMessage = $"Error: {ex.Message}";
+        }
+         isLoading = false;
+    }
+}

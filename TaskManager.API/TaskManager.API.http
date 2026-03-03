@@ -1,0 +1,263 @@
+@TaskManager.API_HostAddress = https://localhost:7109
+
+###
+//PROJECT CONTROLLER ENDPOINTS
+
+###
+PUT {{TaskManager.API_HostAddress}}/api/projects/97a27c28-8eb7-485a-8ce9-f4313813c5cc
+Content-Type: application/json
+Accept: application/json
+
+{
+    "UserId" : "562c8cfc-bf80-444c-b5b9-7da600addaa6",
+    "ProjectId" : "97a27c28-8eb7-485a-8ce9-f4313813c5cc",
+    "ProjectName" : "Jame's 3rd project",
+    "Description" : "Description"
+}
+
+###
+//Completes a project
+PATCH {{TaskManager.API_HostAddress}}/api/projects/
+Content-Type: application/json
+Accept: application/json
+{
+    "ProjectId" : "97a27c28-8eb7-485a-8ce9-f4313813c5cc",
+    "UserId" : "562c8cfc-bf80-444c-b5b9-7da600addaa6"
+}
+
+###
+//Creates a new project
+POST {{TaskManager.API_HostAddress}}/api/projects/
+Content-Type: application/json
+Accept: application/json
+{
+    "Name" : "Josh's 3rd Project",
+    "Description" : "My Third Project",
+    "OwnerId" : "1f1e8628-83ed-487c-a064-4698a20738e7"
+}
+
+###
+//Retrieves projects owned by the user (by ID) 
+GET {{TaskManager.API_HostAddress}}/api/users/1f1e8628-83ed-487c-a064-4698a20738e7/projects
+
+
+###
+//Deletes a project
+
+PATCH {{TaskManager.API_HostAddress}}/api/projects/
+Content-Type: application/json
+Accept: application/json
+{
+    "UserId" : "1f1e8628-83ed-487c-a064-4698a20738e7",
+    "ProjectId" : "46a26073-296a-4087-9fb1-7f4f6eef347c"
+}
+
+###
+//Retrieves Detailed View of Project
+
+GET {{TaskManager.API_HostAddress}}/api/projects/getProjectDetailedView
+Content-Type: application/json
+Accept: application/json
+{
+    "ProjectId" : "dc92574b-3b20-4844-b87e-d88e86cd3ffb",
+    "UserId" : "1f1e8628-83ed-487c-a064-4698a20738e7"
+}
+
+###
+//Retrieves Detailed View of Project
+
+GET {{TaskManager.API_HostAddress}}/api/projects/getProjectDetailedView
+Content-Type: application/json
+Accept: application/json
+{
+    "ProjectId" : "97a27c28-8eb7-485a-8ce9-f4313813c5cc",
+    "UserId" : "562c8cfc-bf80-444c-b5b9-7da600addaa6"
+}
+
+
+
+
+
+###
+//USER CONTROLLER ENDPOINTS
+
+###
+//Creates a new user
+
+POST {{TaskManager.API_HostAddress}}/api/users/createUser/
+Content-Type: application/json
+Accept: application/json
+{
+    "name": "Joy",
+    "email": "joy@gmail.com"
+}
+
+###
+//Deletes a user based on the ID
+POST {{TaskManager.API_HostAddress}}/api/users/deleteUser/
+Content-Type: application/json
+Accept: application/json
+{
+    "id" : "f1aab716-4ec8-4424-a30d-8e5df3c52b1b"
+}
+
+###
+//Retrieves all users
+GET {{TaskManager.API_HostAddress}}/api/users/GetAllUsers
+Accept: application/json
+
+###
+//Retrieves a user based on the ID
+GET {{TaskManager.API_HostAddress}}/api/users/GetUserById/
+Content-Type: application/json
+Accept: application/json
+{
+    "UserId" : "562c8cfc-bf80-444c-b5b9-7da600addaa6"
+}
+
+###
+//Retrieves a user based on their email 
+GET {{TaskManager.API_HostAddress}}/api/users/GetByEmail/
+Content-Type: application/json
+Accept: application/json
+{
+    "Email" : "joy@gmail.com"
+}
+
+
+
+
+
+###
+//TASK CONTROLLER ENDPOINTS
+
+###
+//Completes a task
+POST {{TaskManager.API_HostAddress}}/api/todoItems/CompleteTask
+Content-Type: application/json
+Accept: application/json
+
+{
+    "TodoItemId" : "0d4057be-adf4-4338-826d-c091d71d1fff",
+    "UserId" : "562c8cfc-bf80-444c-b5b9-7da600addaa6"
+}
+
+###
+//Creates a new task
+
+POST {{TaskManager.API_HostAddress}}/api/todoItems/CreateTask
+Content-Type: application/json
+Accept: application/json
+
+{
+    "UserId": "562c8cfc-bf80-444c-b5b9-7da600addaa6",
+    "Name": "Jame's First Task",
+    "ProjectId" : "97a27c28-8eb7-485a-8ce9-f4313813c5cc",
+    "ProjectName" : "James's Project"
+}
+
+###
+//Creates a new task
+//UserId, Name, ProjectId, ProjectName, Description, AssigneeId, Status, Priority, DueDate
+
+
+POST {{TaskManager.API_HostAddress}}/api/todoItems/CreateTask
+Content-Type: application/json
+Accept: application/json
+
+{
+    "UserId" : "1f1e8628-83ed-487c-a064-4698a20738e7",
+    "Name": "Jame's Third Task",
+    "ProjectId" : "28391430-833e-4f24-8ecf-24abd37f5ba5",
+    "ProjectName" : "James's Project",
+    "Description" : "New Description"
+}
+
+
+###
+//Deletes a task
+POST {{TaskManager.API_HostAddress}}/api/todoItems/DeleteTask
+Content-Type: application/json
+Accept: application/json
+
+{
+    "TodoItemId" : "0d4057be-adf4-4338-826d-c091d71d1fff",
+    "UserId" : "562c8cfc-bf80-444c-b5b9-7da600addaa6"
+}
+
+
+###
+//Gets assigned tasks
+POST {{TaskManager.API_HostAddress}}/api/todoItems/GetAssigned
+Content-Type: application/json
+Accept: application/json
+
+{
+    "UserId" : "562c8cfc-bf80-444c-b5b9-7da600addaa6"
+}
+
+
+###
+//Gets Project's tasks
+//UserId, ProjectId
+GET {{TaskManager.API_HostAddress}}/api/todoItems/GetProjectTasks
+Content-Type: application/json
+Accept: application/json
+
+{
+    "UserId" : "562c8cfc-bf80-444c-b5b9-7da600addaa6",
+    "ProjectId" : "97a27c28-8eb7-485a-8ce9-f4313813c5cc"
+}
+
+###
+//Gets Project's tasks
+//UserId, ProjectId
+GET {{TaskManager.API_HostAddress}}/api/todoItems/GetProjectTasks
+Content-Type: application/json
+Accept: application/json
+
+{
+    "UserId" : "1f1e8628-83ed-487c-a064-4698a20738e7",
+    "ProjectId" : "28391430-833e-4f24-8ecf-24abd37f5ba5"
+}
+
+###
+//Gets task detailed view
+GET {{TaskManager.API_HostAddress}}/api/todoItems/TaskDetailedView
+Content-Type: application/json
+Accept: application/json
+{
+    "TodoItemId" : "64bd104f-9783-42e5-88b2-26e7ab8389ef",
+    "UserId" : "562c8cfc-bf80-444c-b5b9-7da600addaa6"
+}
+
+###
+//Update tasks        
+// Id, UserId, ProjectID, Name?, Description, AssigneeId, Status, Priority, DueDate
+POST {{TaskManager.API_HostAddress}}/api/todoItems/UpdateTask/
+Content-Type: application/json
+Accept: application/json
+
+{
+    "Id" : "64bd104f-9783-42e5-88b2-26e7ab8389ef",
+    "UserId" : "562c8cfc-bf80-444c-b5b9-7da600addaa6",
+    "ProjectId" : "97a27c28-8eb7-485a-8ce9-f4313813c5cc",
+    "Title" : "Jame's updated task name",
+    "Description" : "Updated Description"
+}
+
+###
+//Updates task project assignment
+//ProjectId, NewProjectId, TodoItemId, UserId
+
+POST {{TaskManager.API_HostAddress}}/api/todoItems/UpdateTaskProject/
+Content-Type: application/json
+Accept: application/json
+
+{
+    "ProjectId" : "28391430-833e-4f24-8ecf-24abd37f5ba5",
+    "NewProjectId" : "dc92574b-3b20-4844-b87e-d88e86cd3ffb",
+    "TodoItemId" : "7d603995-fc33-4a52-bb9c-cc3d2f3166e1",
+    "UserId" : "1f1e8628-83ed-487c-a064-4698a20738e7"
+}
+

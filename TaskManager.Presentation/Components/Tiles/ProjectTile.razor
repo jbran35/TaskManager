@@ -1,0 +1,142 @@
+﻿@using BlazorBootstrap
+@using TaskManager.Application.Projects.DTOs
+@using TaskManager.Application.Projects.DTOs.Responses
+@using TaskManager.Presentation.Components.Modals
+@using TaskManager.Presentation.Components.Pages
+@using TaskManager.Presentation.Models
+
+@inject NavigationManager NavManager
+@rendermode InteractiveServer
+
+    <Card Class="h-100 shadow-sm" @onclick="NavToProjectDetails">
+        <div class="project-card">
+
+    <CardBody Class="d-flex flex-column align-items-center justify-content-center">
+        <h5 class="card-title mb-4">@Project.Title</h5>
+
+        <ProgressGraph PercentComplete="@CalculatedProgress" IsTile="true"></ProgressGraph>
+        <div class="mt-3 text-muted">
+            <small>@Project.CompleteTodoItemCount / @Project.TotalTodoItemCount Tasks</small>
+         
+            <div class="position-absolute bottom-0 end-0 m-2" @onclick:stopPropagation="true">
+
+                <Dropdown Color="DropdownColor.Light" @ref="dropdownElement" Direction="DropdownDirection.Dropup" Class="position-absolute bottom-0 end-0 m-2">
+
+                        <Button Color="ButtonColor.None" Size="ButtonSize.Large" Style="box-shadow:none">
+                            <Icon Name="IconName.ThreeDotsVertical" @onclick="ToggleTileOptions"></Icon>
+                        </Button>
+
+                        <DropdownMenu Class="dropdown-menu">
+                            <DropdownItem @onclick="OnShowEditProjectModalClick" Type="DropdownItemType.Link">Edit</DropdownItem>
+                            <DropdownItem @onclick="OnShowCompleteProjectModalClick" Type="DropdownItemType.Link">Complete</DropdownItem>
+                            <DropdownItem @onclick="OnShowDeleteProjectModalClick" Type="DropdownItemType.Link">Delete</DropdownItem>
+                        </DropdownMenu>
+                </Dropdown>
+            </div>        
+        </div>
+
+    </CardBody>
+    </div>
+</Card>
+
+<EditProjectModal @ref="editModal" projectId="@Project.Id" OnProjectUpdated="ReloadTile"> </EditProjectModal>
+
+<DeleteProjectModal @ref="deleteModal" ProjectId="@Project.Id" OnProjectDeleted="DeleteTile"></DeleteProjectModal>
+
+<CompleteProjectModal @ref="completeModal" ProjectId="@Project.Id" OnProjectCompleted="CompleteTile"> </CompleteProjectModal>
+
+
+
+@code {
+
+    [Parameter] public required ProjectTileDto Project { get; set; }
+    [Parameter] public EventCallback<ProjectDetailsDto> OnProjectUpdated { get; set; }
+    [Parameter] public EventCallback<ProjectTileDto> OnProjectDeleted { get; set; }
+    [Parameter] public EventCallback<CompleteProjectResponse> OnProjectCompleted { get; set; }
+
+    private Dropdown dropdownElement = default!;
+    public bool menuIsOpen = false;
+
+    //private bool showEditProjectModal = false;
+
+    public required EditProject _editProjectForm;
+
+    private EditProjectModal editModal = default!;
+    private DeleteProjectModal deleteModal = default!;
+    private CompleteProjectModal completeModal = default!;
+
+
+    private void NavToProjectDetails()
+    {
+        NavManager.NavigateTo($"/project/{Project.Id}");
+    }
+
+    private void ToggleTileOptions()
+    {
+        dropdownElement.ToggleAsync();
+        StateHasChanged();
+    }
+
+    public async Task CompleteTile(CompleteProjectResponse completedProj)
+    {
+        if(completedProj is not null)
+        {
+
+            await OnProjectCompleted.InvokeAsync(completedProj);
+
+        }
+    }
+
+    private double CalculateProgress()
+    {
+        if (Project.TotalTodoItemCount == 0)
+        {
+            return 0; 
+        }
+
+        return Math.Round((double)Project.CompleteTodoItemCount / Project.TotalTodoItemCount * 100, 2);
+    }
+
+    private double CalculatedProgress
+    {
+        get
+        {
+            if (Project.TotalTodoItemCount == 0) return 0;
+
+            return Math.Round((double)Project.CompleteTodoItemCount / Project.TotalTodoItemCount * 100, 2);
+        }
+    }
+
+    private async Task ReloadTile(ProjectDetailsDto updatedProj)
+    {
+        Project.Title = "That shit's crazy bruh";
+        //await OnProjectUpdated.InvokeAsync(updatedProj);
+    }
+
+    private async Task DeleteTile()
+    {
+        await OnProjectDeleted.InvokeAsync(Project);
+    }
+
+
+
+    //Show Methods For Modals
+    private async Task OnShowEditProjectModalClick()
+    {
+        ToggleTileOptions();
+        await editModal.OnShowEditProjectModalClick();
+    }
+
+    private async Task OnShowDeleteProjectModalClick()
+    {
+        ToggleTileOptions();
+        await deleteModal.OnShowDeleteProjectModalClick();
+    }
+
+    private async Task OnShowCompleteProjectModalClick()
+    {
+        ToggleTileOptions();
+        await completeModal.OnCompleteProjectModalClick();
+    }
+
+}

@@ -1,0 +1,53 @@
+﻿@using BlazorBootstrap
+@inherits LayoutComponentBase
+
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm px-4 py-2 justify-content-center corsiva">
+
+    <span class="navbar-brand mb-0 display-1 fw-medium corsiva">Platinum Tasks</span>
+
+
+    </nav>
+
+<div class="login-container">
+    <main>
+        @Body
+    </main>
+</div>
+
+<style>
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f8f9fa;
+
+        
+    }
+
+    .corsiva {
+        font-family: "Monotype Corsiva", cursive;
+        font-size: 2rem;
+        line-height: 1.4;
+    }
+
+    .btn-charcoal {
+        background-color: #495057;
+        border-color: #495057;
+        color: white;
+    }
+
+        .btn-charcoal:hover {
+            background-color: #343a40; /* Slightly darker for hover effect */
+            border-color: #343a40;
+            color: white;
+        }
+</style>
+
+<Toasts class="p-3" AutoHide="true" Delay="4000" Placement="ToastsPlacement.TopRight" />
+
+
+
+@code
+{}

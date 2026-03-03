@@ -1,0 +1,136 @@
+﻿@inject ApiClientService ApiClientService
+@page "/project/taskdetails/{TaskId:guid}"
+@using BlazorBootstrap
+@using TaskManager.Application.DTOs
+@using TaskManager.Application.TodoItems.DTOs
+@using TaskManager.Domain.Enums
+@using TaskManager.Presentation.Services
+@rendermode InteractiveServer
+
+
+    <p> Task Name </p>
+
+    <div class="mb-3">
+        <input type="text"
+                class="form-control"
+                placeholder="My New Task..."
+                @bind="Title"
+                disabled=disabled
+                />
+    </div>
+
+    <p>Desscription:</p>
+
+    <div class="mb-3">
+    <TextAreaInput @bind-value="@Description" Rows="3" Placeholder="Enter Task Description" Disabled="true" />
+    </div>
+
+
+    <p>Assignee:</p>
+
+
+        <div class="mb-3">
+        <input type="text"
+                class="form-control"
+                placeholder="Assignee"
+                @bind="Assignee"
+                disabled=disabled
+                />
+    </div>
+
+    <p>Priority:</p>
+        <input type="text"
+                class="form-control"
+                placeholder="Priority"
+                @bind="Priority"
+                disabled=disabled
+                />
+
+    <br />
+
+    <p>Due Date:</p>
+
+    <div class="mb-3">
+        <input type="date"
+                class="form-control"
+                @bind="DueDate"
+                disabled=disabled/>
+    </div>
+
+    <br />
+
+@code {
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+    [Parameter] public required TodoItemEntry TodoItem { get; set; }
+
+    [Parameter] public Guid ProjectId { get; set; }
+
+    public string Title { get; set; } = string.Empty;
+
+    public string? Description { get; set; } = string.Empty;
+
+    public string? Assignee { get; set; } = string.Empty;
+
+    public DateTime? DueDate { get; set; }
+
+    public Status Status { get; set; }
+
+    public string ProjectName { get; set; } = string.Empty;
+
+    public Domain.Enums.Priority? Priority { get; set; }
+
+    public string Message { get; set; } = string.Empty;
+
+    //private bool addAssigneeDisabled = true;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        Title = TodoItem.Title;
+        Description = TodoItem.Description;
+        Assignee = TodoItem.AssigneeName;
+        DueDate = TodoItem.DueDate;
+        Priority = TodoItem.Priority; 
+    }
+
+    @* private async Task LoadTask()
+    {
+        try
+        {
+            //TaskId, Name, ProjectId, ProjectName, Description, AssigneeId, AssigneeName, DueDate, Status, Priority
+            Console.WriteLine("Passing this ID: " + TodoItemId);
+
+            var client = ApiClientService.GetClient(); 
+            var response = await client.GetAsync($"api/todoitems/{TodoItemId}");
+
+            if(response is null)
+            {
+                ToastService.Notify(new(ToastType.Danger, "Unexpected Error Retrieving Task"));
+                return;
+            }
+
+            else if (!response.IsSuccessStatusCode)
+                ToastService.Notify(new(ToastType.Danger, await response.Content.ReadAsStringAsync()));
+
+
+            var task = await response.Content.ReadFromJsonAsync<TodoItemEntry>();
+
+            if (task is null)
+                return;
+
+            Title = task.Title ?? "-";
+            Description = task.Description ?? "-";
+            ProjectName = task.ProjectTitle;
+            Assignee = task.AssigneeName ?? "-";
+            DueDate = task.DueDate;
+            Status = task.Status;
+            Priority = task.Priority;
+            StateHasChanged();
+
+        }catch (Exception ex)
+        {
+            Message = $"Error loading task: {ex.Message}";
+        }
+    } *@
+}

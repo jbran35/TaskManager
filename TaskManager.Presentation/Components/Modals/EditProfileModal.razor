@@ -1,0 +1,108 @@
+﻿@using BlazorBootstrap
+@using TaskManager.Application.Interfaces
+@using TaskManager.Application.Users.DTOs
+@using TaskManager.Presentation.Components.Pages 
+@inject IHttpClientFactory ClientFactory
+@inject HttpClient Http
+@inject NavigationManager NavManager
+@inject IJSRuntime JS
+@using TaskManager.Presentation.Services
+
+<Modal @ref="editProfileModal"> 
+
+    <BodyTemplate>
+        <p>First Name:</p>
+        <EditForm Model="request" OnValidSubmit="OnUpdateProfileClick">
+            
+            
+            <div class="mb-3">
+                <TextInput Class="form-control"
+                           @bind-value="request.FirstName"
+                            Disabled="isSaved">
+                </TextInput>
+
+            </div>
+
+            <p>Last Name:</p>
+            <div class="mb-3">
+                <TextInput Class="form-control"
+                           @bind-value="request.LastName"
+                           Disabled="isSaved">
+                </TextInput>
+            </div>
+
+
+            <p>UserName:</p>
+            <div class="mb-3">
+                <TextInput Class="form-control"
+                           @bind-value="request.UserName"
+                           Disabled="isSaved" \>
+                </TextInput>
+            </div>
+
+            <p>Email:</p>
+            <div class="mb-3">
+                <TextInput Class="form-control"
+                           @bind-value="request.Email"
+                           Disabled="isSaved">
+                </TextInput>
+            </div>
+        </EditForm>
+    </BodyTemplate>
+
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="OnHideModalClick" Type="ButtonType.Button">Close</Button>
+        <Button Color="ButtonColor.Dark" Type="ButtonType.Submit" @onclick="OnUpdateProfileClick">Update</Button>
+    </FooterTemplate>
+        
+
+</Modal>
+
+@code {
+
+    [Parameter] public EventCallback OnProfileUpdate { get; set; }
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+    private Modal editProfileModal = default!;
+    private bool isSaved = false; 
+
+    private UpdateProfileRequest request = new UpdateProfileRequest();
+
+    public async Task OnShowEditProfileModalClick(string firstName, string lastName, string email, string userName)
+    {
+
+        request.FirstName = firstName;
+        request.LastName = lastName;
+        request.Email = email;
+        request.UserName = userName;
+        await editProfileModal.ShowAsync(); 
+    }
+
+    private async Task OnHideModalClick()
+    {
+        await editProfileModal.HideAsync();
+    }
+
+    private async Task OnUpdateProfileClick()
+    {
+        var response = await Http.PostAsJsonAsync("api/Account/updateprofile", request);
+        var result = await response.Content.ReadFromJsonAsync<UpdateProfileResponse>();
+
+        if (result is null || !result.Success)
+        {
+            ToastService.Notify(new(ToastType.Danger, result?.Message ?? "Bad Request"));
+            return;
+
+        }
+
+        else if (result.Success)
+        {
+            //ToastService.Notify(new(ToastType.Success, result?.Message ?? "Bad Request"));
+
+            await JS.InvokeVoidAsync("forceIdentityRefresh", "/account/refresh-identity", request);
+            //await editProfileModal.HideAsync();
+            isSaved = true;
+            StateHasChanged(); 
+        }
+    }
+}

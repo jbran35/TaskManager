@@ -1,0 +1,73 @@
+﻿@using BlazorBootstrap
+@using TaskManager.Application.Projects.DTOs.Responses
+@using TaskManager.Domain.Common
+@using TaskManager.Presentation.Components.Pages
+@using TaskManager.Presentation.Services
+
+@inject ApiClientService ApiClientService
+@inject ProjectStateService ProjectStateService
+
+
+@* Delete Modal *@
+
+<Modal @ref="deleteProjectModal" Title=Delete>
+    <BodyTemplate>
+        <DeleteProject></DeleteProject>
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="OnHideDeleteModalClick">Cancel</Button>
+        <Button Color="ButtonColor.Dark" @onclick="OnDeleteProjectClick" Disabled="IsDeleteClicked">Delete</Button>
+    </FooterTemplate>
+</Modal>
+
+@code {
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+    [Parameter] public Guid ProjectId { get; set; }
+    [Parameter] public EventCallback OnProjectDeleted { get; set; }
+
+    public bool IsDeleteClicked = false; 
+
+    public Modal deleteProjectModal = default!;
+
+    //Delete Project Modal Methods
+
+    public async Task OnShowDeleteProjectModalClick()
+    {
+        await deleteProjectModal.ShowAsync();
+
+    }
+
+    private async Task OnHideDeleteModalClick()
+    {
+        await deleteProjectModal.HideAsync();
+    }
+
+    private async Task OnDeleteProjectClick()
+    {
+        IsDeleteClicked = true;
+        var client = ApiClientService.GetClient(); 
+        var response = await client.DeleteAsync($"api/projects/{ProjectId}");
+        var result = await response.Content.ReadFromJsonAsync<DeleteProjectResponse>(); 
+
+        if (response is not null && result is not null && response.IsSuccessStatusCode)
+        {
+            await ProjectStateService.RemoveProject(result.ProjectId);
+            await OnProjectDeleted.InvokeAsync(result);
+        }
+        else if (response is not null && !response.IsSuccessStatusCode)
+        {
+            ToastService.Notify(new(ToastType.Danger, await response.Content.ReadAsStringAsync()));
+        }
+        else
+            ToastService.Notify(new(ToastType.Danger, "An Unexpected Error Occurred Deleting This Project"));
+
+        await ProjectStateService.RemoveProject(ProjectId); 
+        ToastService.Notify(new(ToastType.Success, "Project Deleted Successfully!"));
+
+        IsDeleteClicked = false; 
+        await deleteProjectModal.HideAsync();
+
+    }
+}
+

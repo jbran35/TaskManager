@@ -1,0 +1,45 @@
+﻿@using BlazorBootstrap
+@* Delete Assignee Connection Modal *@
+
+<Modal @ref="deleteAssigneeModal" Title="Delete Assignee">
+    <BodyTemplate>
+        <p>Are you sure you want to remove <b> @AssigneeName </b> from your group?</p>
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="OnHideDeleteAssigneeModal">Cancel</Button>
+        <Button Color="ButtonColor.Dark" @onclick="OnDeleteAssignee" Disabled="IsDeleteClicked">Delete</Button>
+    </FooterTemplate>
+</Modal>
+
+
+@code {
+
+    [Parameter] public string AssigneeName { get; set; } = string.Empty;
+    [Parameter] public EventCallback DeleteAssignee { get; set; }
+
+    public Modal deleteAssigneeModal = default!;
+
+    private bool IsDeleteClicked = false;
+
+    public async Task ShowAsync()
+    {
+        await deleteAssigneeModal.ShowAsync();
+    }
+
+
+    public void OnHideDeleteAssigneeModal()
+    {
+        deleteAssigneeModal.HideAsync();
+    }
+
+    private void OnDeleteAssignee()
+    {
+        IsDeleteClicked = true;
+        deleteAssigneeModal.HideAsync();
+        DeleteAssignee.InvokeAsync();
+        IsDeleteClicked = false;
+
+    }
+
+    
+}

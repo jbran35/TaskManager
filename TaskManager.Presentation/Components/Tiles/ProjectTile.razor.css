@@ -1,0 +1,10 @@
+﻿.project-card {
+    background-color: #ffffff;
+    transition: background-color 0.2s ease;
+}
+
+.project-card:hover {
+    background-color: #f2f2f2 !important;
+}
+
+.project-card:

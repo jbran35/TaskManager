@@ -1,0 +1,67 @@
+﻿@using BlazorBootstrap
+@using TaskManager.Application.Projects.DTOs.Responses
+@using TaskManager.Presentation.Components.Pages
+@using TaskManager.Presentation.Services
+@inject ApiClientService ApiClientService
+@inject ProjectStateService ProjectStateService
+
+
+<Modal @ref="completeProjectModal" Title="Complete Project">
+    <BodyTemplate>
+        <p>Are you sure you want to complete this project?</p>
+
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="OnHideCompleteProjectModal">Cancel</Button>
+        <Button Color="ButtonColor.Dark" @onclick="OnCompleteClick" disabled="IsCompleteClicked">Complete</Button>
+    </FooterTemplate>
+</Modal>
+
+
+@code {
+
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+    [Parameter] public Guid ProjectId { get; set; }
+    [Parameter] public EventCallback<CompleteProjectResponse> OnProjectCompleted { get; set; }
+
+    private bool IsCompleteClicked = false;
+
+    Modal completeProjectModal = default!;
+
+
+    public async Task OnCompleteProjectModalClick()
+    {
+        await completeProjectModal.ShowAsync(); 
+    }
+
+    private async Task OnHideCompleteProjectModal()
+    {
+        await completeProjectModal.HideAsync();
+    }
+
+    public async Task OnCompleteClick()
+    {
+        IsCompleteClicked = true;
+        await completeProjectModal.HideAsync();
+        Console.WriteLine("Completing: " + ProjectId.ToString());
+
+        var client = ApiClientService.GetClient(); 
+        var response = await client.PatchAsync("api/projects/complete/" + ProjectId.ToString(), null);
+        var result = await response.Content.ReadFromJsonAsync<CompleteProjectResponse>(); 
+
+        if (response is null)
+            ToastService.Notify(new(ToastType.Danger, "Unexpected Error Completing Project"));
+
+        else if (!response.IsSuccessStatusCode || result is null)
+            ToastService.Notify(new(ToastType.Danger, await response.Content.ReadAsStringAsync()));
+
+        else if (response.IsSuccessStatusCode)
+        {
+            await ProjectStateService.SetProjectTile(result.ProjectTile);
+            ToastService.Notify(new(ToastType.Success, "Project Successfully Completed!"));
+            await OnProjectCompleted.InvokeAsync(result);
+            IsCompleteClicked = false;
+        }
+    }
+}

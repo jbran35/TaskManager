@@ -1,0 +1,264 @@
+﻿@inject ApiClientService ApiClientService
+@inject NavigationManager NavigationManager
+@inject ProjectStateService ProjectStateService
+@inject TodoItemDraftStateService TodoItemDraftStateService
+@inject SignalRConnectionService SignalRConnectionService
+
+@* @inject AssigneeListStateService AssigneeListStateService *@
+
+@page "/project/task/{TaskId:guid}"
+@using BlazorBootstrap
+@using System.ComponentModel.DataAnnotations
+@using TaskManager.Application.TodoItems.DTOs
+@using TaskManager.Application.TodoItems.DTOs.Requests
+@using TaskManager.Application.TodoItems.DTOs.Responses
+@using TaskManager.Application.UserConnections.DTOs
+@using TaskManager.Domain.Enums
+@using TaskManager.Presentation.Components.Modals
+@using TaskManager.Presentation.Components.Models
+@using TaskManager.Presentation.Services
+
+@rendermode InteractiveServer
+
+<style>
+    .valid.modified:not([type=checkbox]) {
+        outline: 1px solid #26b050;
+    }
+
+    .invalid {
+        outline: 1px solid red;
+    }
+
+    .validation-message {
+        color: red;
+    }
+</style>
+
+<EditForm EditContext="@editContext">
+    <DataAnnotationsValidator />
+    <div class="mb-3">
+        <label class="form-label">Name:  <span class="text-danger">*</span></label>
+        <InputText class="form-control" placeholder="Task Name..." @bind-Value="validationModel.Title" />
+        <ValidationMessage For="@(() => validationModel.Title)" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Description:</label>
+        <InputTextArea class="form-control" rows="3" placeholder="Enter Task Description..." @bind-Value="validationModel.Description" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Assignee:</label>
+        <div class="d-flex mb-3 gap-2">
+            <select class="form-control" @bind="validationModel.AssigneeId">
+                <option value="">-- Select Assignee --</option>
+                @foreach (var assignee in Assignees)
+                {
+                    <option value="@assignee.AssigneeId">
+                        @assignee.AssigneeFullName - @assignee.AssigneeEmail
+                    </option>
+                }
+            </select>
+
+            <Button Color="ButtonColor.Dark" @onclick="OnShowNewAssigneeModal"><Icon Name="IconName.PersonAdd" /></Button>
+        </div>
+    </div>
+
+    <div>
+        <label class="form-label">Priority:</label>
+
+        <select class="form-control" @bind="validationModel.Priority">
+            <option value="@TaskManager.Domain.Enums.Priority.None"> None </option>
+            @foreach (var item in priorityOptions.Where(p => p != TaskManager.Domain.Enums.Priority.None))
+            {
+                 <option value="@item">@item</option>
+            }
+
+        </select>
+    </div>
+
+    <br />
+
+    <label class="form-label">Due Date:</label>
+    <div class="mb-3">
+        <input type="date"
+               class="form-control"
+               @bind="validationModel.DueDate" />
+    </div>
+
+</EditForm>
+
+@code {
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+    [Parameter] public required TodoItemEntry TodoItem { get; set; }
+    [Parameter] public EventCallback<TodoItemModel> OnShowNewAssigneeModalClick { get; set; }
+    [Parameter] public EventCallback<Guid> OnRestoreEditTodoItemModal { get; set; }
+    [Parameter] public Guid ProjectId { get; set; }
+
+
+    public Guid? AssigneeId { get; set; }
+    public string ProjectName { get; set; } = string.Empty;
+    public List<UserConnectionDto> Assignees = new List<UserConnectionDto>();
+
+    private Status[] statusOptions = Enum.GetValues<Status>();
+    private Domain.Enums.Priority[] priorityOptions = Enum.GetValues<Domain.Enums.Priority>();
+
+    private EditContext? editContext;
+    private ValidationModel validationModel = new ValidationModel();
+    public TodoItemModel Model { get; set; } = new TodoItemModel();
+
+
+    public void EditFromDetails(TodoItemEntry todoItem)
+    {
+        validationModel.Title = todoItem.Title;
+        validationModel.Description = todoItem.Description ?? string.Empty;
+        validationModel.AssigneeId = todoItem.AssigneeId;
+        validationModel.Priority = todoItem.Priority ?? Domain.Enums.Priority.None;
+        validationModel.DueDate = todoItem.DueDate;
+    }
+
+    protected async override Task OnInitializedAsync()
+    {
+        editContext = new EditContext(validationModel);
+        await LoadAssigneesAsync(); 
+
+        if(TodoItem is null)
+        {
+            await LoadTask();
+        }
+    }
+
+    public async Task LoadAssigneesAsync()
+    {
+        var client = ApiClientService.GetClient();
+
+        var response = await client.GetAsync($"api/Account/assignees");
+
+        if(response is not null && response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<List<UserConnectionDto>>();
+
+            if (result is not null)
+                Assignees = result;
+        }
+    }
+
+    private async Task OnShowNewAssigneeModal()
+    {
+        Model.Title = validationModel.Title;
+        Model.Description = validationModel.Description;
+        Model.AssigneeId = validationModel.AssigneeId;
+        Model.ProjectId = ProjectId;
+        Model.Priority = validationModel.Priority;
+        Model.DueDate = validationModel.DueDate;
+
+        await OnShowNewAssigneeModalClick.InvokeAsync(Model);
+    }
+
+    public async Task LoadTask()
+    {
+        var cachedDetails = await ProjectStateService.GetTodoItem(ProjectId, TodoItem.Id);
+
+        if (cachedDetails is not null && cachedDetails.Title is not null)
+        {
+            validationModel.Title = cachedDetails.Title;
+            validationModel.Description = cachedDetails.Description ?? string.Empty;
+
+            if (cachedDetails.AssigneeId is not null && cachedDetails.AssigneeId != Guid.Empty)
+            {
+                var assignee = Assignees.FirstOrDefault(a => a.AssigneeId == cachedDetails.AssigneeId);
+
+
+                if (assignee is not null)
+                    validationModel.AssigneeId = assignee.AssigneeId;
+            }
+
+            validationModel.AssigneeId = cachedDetails.AssigneeId;
+            validationModel.Priority = cachedDetails.Priority ?? Domain.Enums.Priority.None;
+            validationModel.DueDate = cachedDetails.DueDate;
+
+            return;
+        }
+
+        try
+        {
+            //TaskId, Name, ProjectId, ProjectName, Description, AssigneeId, AssigneeName, DueDate, Status, Priority
+            var client = ApiClientService.GetClient();
+
+            var response = await client.GetFromJsonAsync<GetTodoItemDetailedViewResponse>($"api/todoitems/{TodoItem.Id}");
+
+            if (response is null || response.TodoItemDetails is null)
+            {
+                return;
+            }
+
+            var task = response.TodoItemDetails;
+        }
+
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);            
+        }
+    }
+
+    public async Task UpdateTask()
+    {
+        var isValid = editContext?.Validate() ?? false;
+        if (!isValid) return;
+
+        if (validationModel.AssigneeId == Guid.Empty)
+            validationModel.AssigneeId = null;
+
+        var request = new UpdateTodoItemRequest
+        {
+            ProjectId = ProjectId,
+            Title = validationModel.Title,
+            Description = validationModel.Description,
+            AssigneeId = validationModel.AssigneeId,
+            Priority = validationModel.Priority,
+            DueDate = validationModel.DueDate
+        };
+        var client = ApiClientService.GetClient();
+
+        var response = await client.PatchAsJsonAsync("api/todoItems/" + TodoItem.Id.ToString(), request);
+
+        if (response is null)
+        {
+            ToastService.Notify(new(ToastType.Danger, "Unexpected Error Updated Task"));
+            return;
+        }
+
+        else if (!response.IsSuccessStatusCode)
+        {
+            ToastService.Notify(new(ToastType.Danger, await response.Content.ReadAsStringAsync()));
+            return;
+        }
+
+        var result = await response.Content.ReadFromJsonAsync<TodoItemEntry>();
+
+        if (result is not null)
+        {
+            await ProjectStateService.SetTodoItemInProject(ProjectId, result);
+            var updatedItem = await ProjectStateService.GetTodoItem(ProjectId, result.Id);
+            ToastService.Notify(new(ToastType.Success, "Task Updated Successfully!"));
+        }
+    }
+
+    public void RestoreForm()
+    {
+        var Model = TodoItemDraftStateService.GetModelFromCache();
+
+        if (Model is not null)
+        {
+            validationModel.Title = Model.Title ?? string.Empty;
+            validationModel.Description = Model.Description ?? string.Empty;
+            validationModel.AssigneeId = Model.AssigneeId ?? Guid.Empty;
+            validationModel.Priority = Model.Priority ?? Domain.Enums.Priority.None;
+            validationModel.DueDate = Model.DueDate ?? null;
+        }
+
+        editContext = new EditContext(validationModel);
+        StateHasChanged();
+    }
+}

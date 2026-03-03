@@ -1,0 +1,71 @@
+﻿@using BlazorBootstrap
+@using TaskManager.Application.Projects.DTOs.Responses
+@using TaskManager.Application.TodoItems.DTOs
+@using TaskManager.Presentation.Components.Pages
+@using TaskManager.Presentation.Enums
+
+@* Add Task Modal *@
+
+<Modal @ref="addTaskModal" Title="Add Task" Size="ModalSize.Large">
+    <BodyTemplate>
+        <NewTask @ref="_addTaskForm" ProjectId="ProjectId" 
+                 OnShowNewAssigneeModalClick="OnShowNewAssigneeModal"
+                 OnRestoreNewTodoItemModal="RestoreAddTodoItemModal"></NewTask>
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="OnHideAddTaskModalClick">Cancel</Button>
+        <Button @ref="SaveButton" Size="ButtonSize.Medium" Color="ButtonColor.Dark" @onclick="OnCreateTaskClick" Disabled="IsSaveClicked" >Save</Button>
+    </FooterTemplate>
+</Modal>
+
+
+@code {
+    private Modal addTaskModal = default!;
+
+    [Parameter] public Guid ProjectId { get; set; }
+    [Parameter] public EventCallback OnTodoItemCreated { get; set; }
+    [Parameter] public EventCallback<NewAssigneeCallingOriginEnum> OnShowNewAssigneeModalClick { get; set; }
+
+    Button SaveButton = default!; 
+    private NewTask _addTaskForm;
+    TodoItemModel model = new TodoItemModel();
+    private bool IsSaveClicked = false; 
+
+
+    public async Task OnAddTaskModalClick(Guid projectId)
+    {
+        model.ProjectId = projectId;
+        await addTaskModal.ShowAsync();
+    }
+
+    public async Task OnHideAddTaskModalClick()
+    {
+        await addTaskModal.HideAsync();
+    }
+
+    private async Task OnCreateTaskClick()
+    {
+        IsSaveClicked = true;
+        await _addTaskForm.CreateTask();
+
+        await addTaskModal.HideAsync();
+        IsSaveClicked = false;
+        await OnTodoItemCreated.InvokeAsync();
+
+    }
+
+    public async Task OnShowNewAssigneeModal()
+    {
+        var origin = NewAssigneeCallingOriginEnum.AddTodoItem;
+        await OnShowNewAssigneeModalClick.InvokeAsync(origin);
+        await addTaskModal.HideAsync();
+    }
+
+    public async Task RestoreAddTodoItemModal()
+    {
+        await addTaskModal.ShowAsync();
+        _addTaskForm.RestoreForm(); 
+    }
+}
+
+

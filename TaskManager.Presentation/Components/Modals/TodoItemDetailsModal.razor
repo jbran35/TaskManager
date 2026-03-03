@@ -1,0 +1,52 @@
+﻿@using BlazorBootstrap
+@using TaskManager.Application.TodoItems.DTOs
+@using TaskManager.Presentation.Components.Pages
+
+
+@* Details Modal *@
+
+<Modal @ref="detailsModal" Title="Task Details" Size="ModalSize.Large">
+    <BodyTemplate>
+        <TodoItemDetailedView TodoItem="@TodoItem"></TodoItemDetailedView>
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="OnHideDetailsModalClick">Close</Button>
+        @if (isOwner)
+        {
+            <Button Color="ButtonColor.Dark" @onclick="OnEditFromDetailsModalClick" Disabled="IsEditClicked">Edit</Button>
+        }
+    </FooterTemplate>
+</Modal>
+
+@code {
+
+    [Parameter] public bool isOwner { get; set; }
+    [Parameter] public Guid TodoItemId { get; set; }
+    [Parameter] public required string TodoItemTitle { get; set; }
+    [Parameter] public EventCallback<TodoItemEntry> OnEditClick { get; set; }
+
+    private TodoItemEntry? TodoItem { get; set; }
+    private bool IsEditClicked = false;
+
+    private Modal detailsModal = default!;
+
+    public async Task OnShowDetailsModalClick(TodoItemEntry todoItem)
+    {
+        TodoItem = todoItem;
+        TodoItemTitle = todoItem.Title;
+        TodoItemId = todoItem.Id;
+        await detailsModal.ShowAsync();
+    }
+
+    private async Task OnHideDetailsModalClick()
+    {
+        await detailsModal.HideAsync();
+    }
+    private async Task OnEditFromDetailsModalClick()
+    {
+        IsEditClicked = true;
+        await detailsModal.HideAsync();
+        await OnEditClick.InvokeAsync(TodoItem);
+        IsEditClicked = false;
+    }
+}

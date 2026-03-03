@@ -1,0 +1,105 @@
+﻿@using BlazorBootstrap
+@using TaskManager.Application.DTOs.Requests
+@using TaskManager.Application.UserConnections.DTOs
+@using TaskManager.Application.UserConnections.DTOs.Requests
+@using TaskManager.Application.Users.DTOs.Responses
+@using TaskManager.Presentation.Components.Pages
+@using TaskManager.Presentation.Services
+@using TaskManager.Presentation.Enums
+
+@inject ApiClientService ApiClientService
+@inject AssigneeListStateService AssigneeListStateService
+@inject TodoItemDraftStateService TodoItemDraftStateService
+
+<Modal @ref="newAssigneeModal" Title="New Assignee">
+    <BodyTemplate>
+        <NewAssignee @ref="_newAssigneeForm"> </NewAssignee>
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="OnCancelClick">Close</Button>
+        <Button Color="ButtonColor.Dark" @onclick="OnSaveAssigneeModalClick" Disabled="IsAddClicked">Add</Button>
+    </FooterTemplate>
+</Modal>
+
+@code{
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+    [Parameter] public EventCallback<NewAssigneeCallingOriginEnum> OnAssigneeSaved { get; set; }
+    [Parameter] public EventCallback<NewAssigneeCallingOriginEnum> OnCanceled { get; set; }
+
+    private string message = string.Empty; 
+    private Modal newAssigneeModal = default!; 
+    private NewAssignee _newAssigneeForm = default!;
+    private bool IsAddClicked = false;
+    private string assignee = string.Empty;
+
+    //Used to help discern how to restore the parent modal, depending on whether it is the add or edit modal. 
+    NewAssigneeCallingOriginEnum origin;
+
+
+    public async Task OnShowNewAssigneeModal(NewAssigneeCallingOriginEnum origin)
+    {
+        this.origin = origin;
+        await newAssigneeModal.ShowAsync();
+
+    }
+
+    public async Task OnShowNewAssigneeModal()
+    {
+        await newAssigneeModal.ShowAsync();
+    }
+
+    public async Task OnCancelClick()
+    {
+        await newAssigneeModal.HideAsync();
+        await OnCanceled.InvokeAsync(origin);
+    }
+
+    public async Task OnHideNewAssigneeModal()
+    {
+        await newAssigneeModal.HideAsync(); 
+    }
+
+
+    public async void OnSaveAssigneeModalClick()
+    {
+        IsAddClicked = true;
+        var assigneeDetails = await _newAssigneeForm.GetUserDetails();
+
+        var request = new CreateUserConnectionRequest
+        {
+            AssigneeId = assigneeDetails.Id,
+        };
+
+        var client = ApiClientService.GetClient();
+
+        var response = await client.PostAsJsonAsync($"api/Account/assignees", request);
+
+        if (response is null)
+        {
+            ToastService.Notify(new(ToastType.Danger, "Unexpected Error Adding New Assignee"));
+            return;
+        }
+
+        else if (!response.IsSuccessStatusCode)
+        {
+            ToastService.Notify(new(ToastType.Danger, await response.Content.ReadAsStringAsync()));
+            return;
+        }
+
+        var result = await response.Content.ReadFromJsonAsync<UserConnectionDto>();
+
+        if (result is not null)
+        {
+            AssigneeListStateService.SetAssigneeInCache(result);
+
+            //Add assignee to pending todoItem if origin is EditTodoItemModal or AddTodoItemModal, that way it can be preselected upon restoration
+            TodoItemDraftStateService.SetAssigneeInModel(result);
+
+            await OnAssigneeSaved.InvokeAsync(origin);
+            await newAssigneeModal.HideAsync();
+        }
+
+        IsAddClicked = false;
+    }
+}

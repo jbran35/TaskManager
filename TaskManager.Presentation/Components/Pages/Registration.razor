@@ -1,0 +1,110 @@
+﻿@page "/register"
+@using BlazorBootstrap
+@using TaskManager.Application.Users.DTOs
+@using TaskManager.Application.Users.DTOs.Responses
+@using TaskManager.Presentation.Services
+@inject ApiClientService ApiClientService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+
+<div class="container">
+    <div class="d-flex flex-column align-items-center justify-content-start pt-5 vh-80">
+            <Card Class="w-50">
+                <EditForm Model="registerModel" OnValidSubmit="RegisterUser">
+                    
+                <CardBody>
+                    <div class="text-center">
+
+                        <CardTitle> Register</CardTitle>
+
+                    </div>
+
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input class="form-control" @bind="registerModel.Username" />
+                        </div>
+
+
+                        <div class="form-group">
+                            <label>Password</label>
+                            <input type="password" class="form-control" @bind="registerModel.Password" />
+                        </div>
+                        <br />
+
+                    <div class="form-group">
+                        <label>First Name</label>
+                        <input type="text" class="form-control" @bind="registerModel.FirstName" />
+                    </div>
+                    <br />
+
+                    <div class="form-group">
+                        <label>Last Name</label>
+                        <input type="text" class="form-control" @bind="registerModel.LastName" />
+                    </div>
+                    <br />
+
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" class="form-control" @bind="registerModel.Email" />
+                    </div>
+                    <br />
+
+                        
+                </CardBody>
+                    <Button Color="ButtonColor.Dark" Type="ButtonType.Submit" Class="w-100">Register</Button>
+                    </EditForm>
+            </Card>
+        <div class="d-flex justify-content-center align-items-start pt-5">
+            <p> Already have an account? <a href="/login" class="text-primary text-decoration-none fw-bold"> Login </a></p>
+        </div>
+
+            </div>
+    </div>   
+
+@code {
+
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+    private RegisterModel registerModel = new RegisterModel();
+    private string message = string.Empty;
+
+    public class RegisterModel
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+
+    }
+
+    public class RegisterResponse
+    {
+        public string? Token { get; set; }
+    }
+
+    private async Task RegisterUser()
+    {
+        var client = ApiClientService.GetClient(); 
+
+        var response = await client.PostAsJsonAsync("api/Account/register", registerModel);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<RegisterUserResponse>(); 
+
+            if (result is not null)
+                ToastService.Notify(new(ToastType.Success, result.Message));
+            
+                // Read the token from the response
+            NavigationManager.NavigateTo("/login");
+
+        }
+        else
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+        }
+    }
+}
