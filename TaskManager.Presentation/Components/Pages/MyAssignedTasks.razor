@@ -127,11 +127,11 @@ else
     <div class="alert @(SignalRConnectionService.IsConnected ? "alert-success" : "alert-danger")">
         SignalR Status: @SignalRConnectionService.HubState
     </div>
-
-
 }
 
 @code {
+
+    [Inject] protected ToastService ToastService { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
@@ -188,34 +188,34 @@ else
 
     private async Task UpdateCompletionStatus(Guid todoItemId)
     {
-        // var response = await Http.PatchAsync($"api/todoitems/UpdateStatus/{todoItemId}", null);
-        // var result = await response.Content.ReadFromJsonAsync<CompleteTodoItemResponse>();
+        var client = ApiClientService.GetClient(); 
+        var response = await client.PatchAsync($"api/todoitems/UpdateStatus/{todoItemId}", null); 
+        var result = await response.Content.ReadFromJsonAsync<TodoItemEntry>();
 
-        // if (!response.IsSuccessStatusCode)
-        // {
-        //     errorMessage = $"Failed to complete task. Status code: {response.StatusCode}";
-        //     return;
-        // }
+        if (response is null)
+        {
+            ToastService.Notify(new(ToastType.Danger, "Unexpected Error Updating Task Status"));
+            return;
+        }
 
-        // var task = taskList?.FirstOrDefault(t => t.Id == todoItemId);
+        if (!response.IsSuccessStatusCode || result is null)
+        {
+            ToastService.Notify(new(ToastType.Danger, $"Failed to complete task. Status code: {response.StatusCode}"));
+            return;
+        }
 
-        // if (task is not null)
-        // {
-        //     if (result.MarkedComplete)
-        //     {
-        //         task.Status = Status.Complete;
+        var task = taskList?.FirstOrDefault(t => t.Id == todoItemId);
 
-        //     }
+        if (task is not null)
+        {
+            if (result.Status == Status.Incomplete)
+                task.Status = Status.Complete;
 
-        //     if (result.MarkedIncomplete)
-        //     {
-        //         task.Status = Status.Incomplete;
+            if (result.Status == Status.Complete)
+                task.Status = Status.Incomplete;
 
-        //     }
-
-        //     tasks = taskList.AsQueryable();
-
-        // }
+            tasks = taskList.AsQueryable();
+        }
     }
 
     private async Task OnShowTodoItemDetails (TodoItemEntry todoItem)

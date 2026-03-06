@@ -31,7 +31,6 @@ namespace TaskManager.Presentation.Services
             {
                 options.AccessTokenProvider = async () =>
                 {
-                    //Console.WriteLine("Getting tokens I think...");
                     return await GetTokenAsync();
                 };
             })

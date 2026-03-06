@@ -16,32 +16,24 @@ namespace TaskManager.API.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
-
     public class ProjectsController (IMediator mediator, ILogger<ProjectsController> logger) : ControllerBase
     {
         private readonly IMediator _mediator = mediator;
         private readonly ILogger<ProjectsController> _logger = logger;
 
-        
         //Endpoint to mark project as complete.
         [HttpPatch("complete/{projectId}")]
         public async Task<ActionResult<CompleteProjectResponse>> Complete([FromRoute] Guid projectId)
         {
-
             //Validate User Identity
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdString))
-            {
                 return Unauthorized(new { Message = "User ID not found in token" });
-            }
 
             var userId = Guid.Parse(userIdString);
-
             var command = new CompleteProjectCommand(userId, projectId);
             var result = await _mediator.Send(command);
-
-            Console.WriteLine("In API: " + result.Value.ProjectTile.Description);
 
             return result.IsSuccess ? Ok(result.Value) : BadRequest(result.ErrorMessage);
         }
@@ -53,14 +45,10 @@ namespace TaskManager.API.Controllers
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdString) || request is null)
-            {
                 return Unauthorized(new { Message = "Unauthorized" });
-            }
 
             var userId = Guid.Parse(userIdString);
-
             var command = new CreateProjectCommand(userId, request.Title, request.Description);
-
             var result = await _mediator.Send(command);
 
             return result.IsSuccess ? Ok(result.Value) : BadRequest(result.ErrorMessage);
@@ -74,15 +62,10 @@ namespace TaskManager.API.Controllers
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdString))
-            {
                 return Unauthorized(new { Message = "User ID not found in token" });
-            }
 
             var userId = Guid.Parse(userIdString);
-
-
             var command = new DeleteProjectCommand(userId, projectId);
-
             var result = await _mediator.Send(command);
 
             return result.IsSuccess ? Ok(result.Value) : BadRequest(result.ErrorMessage);
@@ -95,17 +78,11 @@ namespace TaskManager.API.Controllers
             //Validate user identity
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            Console.WriteLine(User.FindFirstValue(ClaimTypes.Name + "IS REQUESTING PROJECTS"));
-
             if (string.IsNullOrEmpty(userIdString))
-            {
                 return Unauthorized(new { Message = "User ID not found in token" });
-            }
 
             var userId = Guid.Parse(userIdString);
-
             var command = new GetProjectDetailedViewQuery(userId, projectId);
-
             var result = await _mediator.Send(command);
 
             return result.IsSuccess ? Ok(result.Value) : BadRequest(result.ErrorMessage);
@@ -119,14 +96,10 @@ namespace TaskManager.API.Controllers
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdString))
-            {
                 return Unauthorized(new { Message = "User ID not found in token" });
-            }
 
             var userId = Guid.Parse(userIdString);
-
             var command = new GetProjectDetailsQuery(userId, projectId);
-
             var result = await _mediator.Send(command);
 
             return result.IsSuccess ? Ok(result.Value) : BadRequest(result.ErrorMessage);
@@ -167,16 +140,11 @@ namespace TaskManager.API.Controllers
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdString))
-            {
                 return Unauthorized(new { Message = "User ID not found in token" });
-            }
 
             var userId = Guid.Parse(userIdString);
-
             var usersName = User.FindFirstValue(ClaimTypes.Name);
-
             var command = new GetUserProjectsQuery(userId);
-
             var result = await _mediator.Send(command);
 
             return result.IsSuccess ? Ok(result.Value) : BadRequest(result.ErrorMessage);
@@ -190,14 +158,10 @@ namespace TaskManager.API.Controllers
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdString))
-            {
                 return Unauthorized(new { Message = "User ID not found in token" });
-            }
 
             var userId = Guid.Parse(userIdString);
-
             var query = new GetProjectDetailedViewQuery(userId, projectId);
-
             var result = await _mediator.Send(query);
 
             return result.IsSuccess ? Ok(result.Value) : BadRequest(result.ErrorMessage);
@@ -212,14 +176,10 @@ namespace TaskManager.API.Controllers
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdString))
-            {
                 return Unauthorized(new { Message = "User ID not found in token" });
-            }
 
             var userId = Guid.Parse(userIdString);
-
             var command = new UpdateProjectCommand(userId, projectId, request.Title, request.Description);
-
             var result = await _mediator.Send(command);
 
             return result.IsSuccess ? Ok(result.Value) : BadRequest(result.ErrorMessage);
@@ -235,14 +195,10 @@ namespace TaskManager.API.Controllers
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdString))
-            {
                 return Unauthorized(new { Message = "User ID not found in token" });
-            }
 
             var userId = Guid.Parse(userIdString);
-
             var command = new AddTodoItemCommand(projectId, userId, request.AssigneeId, request.Title, request.Description, request.DueDate, request.Priority);
-
             var result = await _mediator.Send(command);
 
             return result.IsSuccess ? Ok(result.Value) : BadRequest(result.ErrorMessage);

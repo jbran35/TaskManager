@@ -46,6 +46,8 @@ builder.Services.AddIdentity<User, IdentityRole<Guid>>()
 
 builder.Services.AddMediatR(cfg => {
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
+
+    cfg.AddOpenBehavior(typeof(CacheInvalidatorHandler<,>));
 });
 
 

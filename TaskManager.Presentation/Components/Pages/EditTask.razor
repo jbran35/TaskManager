@@ -120,6 +120,11 @@
 
     protected async override Task OnInitializedAsync()
     {
+        validationModel.Title = TodoItem.Title; 
+        validationModel.Description = TodoItem.Description ?? string.Empty; 
+        validationModel.AssigneeId = TodoItem.AssigneeId; 
+        validationModel.Priority = TodoItem.Priority ?? Domain.Enums.Priority.None; 
+        validationModel.DueDate = TodoItem.DueDate; 
         editContext = new EditContext(validationModel);
         await LoadAssigneesAsync(); 
 
@@ -183,7 +188,6 @@
 
         try
         {
-            //TaskId, Name, ProjectId, ProjectName, Description, AssigneeId, AssigneeName, DueDate, Status, Priority
             var client = ApiClientService.GetClient();
 
             var response = await client.GetFromJsonAsync<GetTodoItemDetailedViewResponse>($"api/todoitems/{TodoItem.Id}");

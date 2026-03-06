@@ -28,7 +28,7 @@ namespace TaskManager.Domain.Interfaces
         /// <returns>
         ///     A collection of the todo items assigned.
         /// </returns>
-        Task<List<TodoItem>> GetMyAssignedTodoItemsAsync(Guid userId, CancellationToken cancellationToken);
+        Task<IReadOnlyList<ITodoItemEntry>> GetMyAssignedTodoItemsAsync(Guid userId, CancellationToken cancellationToken);
 
 
         /// <summary>

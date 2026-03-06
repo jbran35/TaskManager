@@ -1,6 +1,6 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Logging;
 using TaskManager.Application.TodoItems.Commands;
 using TaskManager.Domain.Common;
 using TaskManager.Domain.Entities;
@@ -8,47 +8,47 @@ using TaskManager.Domain.Interfaces;
 
 namespace TaskManager.Application.TodoItems.CommandHandlers
 {
-    public class AssignTodoItemCommandHandler(IUnitOfWork unitOfWork, UserManager<User> userManager, IDistributedCache cache) : IRequestHandler<AssignTodoItemCommand, Result>
+    public class AssignTodoItemCommandHandler(IUnitOfWork unitOfWork, UserManager<User> userManager, 
+        ILogger<AssignTodoItemCommandHandler> logger) 
+        : IRequestHandler<AssignTodoItemCommand, Result>
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly UserManager<User> _userManager = userManager;
-        private readonly IDistributedCache _cache = cache; 
+        private readonly ILogger<AssignTodoItemCommandHandler> _logger = logger;
         public async Task<Result> Handle(AssignTodoItemCommand request, CancellationToken cancellationToken)
         {
-            //Validate the request
+            _logger.LogInformation("In Handler"); 
             if (request is null || request.UserId == Guid.Empty || request.ProjectId == Guid.Empty || request.AssigneeId == Guid.Empty)
                 return Result.Failure("Invalid Request.");
 
-            //Check if the user exists
             var user = await _userManager.FindByIdAsync(request.UserId.ToString());
             if (user is null)
                 return Result.Failure("User Not Found.");
 
-            //Check if the user has permission to assign the todo item & access to the project
             var todoItem = await _unitOfWork.TodoItemRepository.GetTodoItemByIdAsync(request.TodoItemId, cancellationToken);
     
 
             if (todoItem is null || todoItem.Project is null || todoItem.OwnerId != request.UserId || todoItem.Project.OwnerId != request.UserId)
                 return Result.Failure("Task Or Project Not Found.");
 
-            //Check if the assignee exists
             var assignee = await _userManager.FindByIdAsync(request.AssigneeId.ToString());
 
             if (assignee is null)
                 return Result.Failure("Assignee Not Found.");
 
-            //Assign the todo item to the user
+            _logger.LogInformation("Assigning To User");
             todoItem.AssignToUser(request.AssigneeId);
 
-            //Save changes
             try
             {
+                _logger.LogInformation("Saving Changes");
                 _unitOfWork.TodoItemRepository.Update(todoItem);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
             }
 
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Issue Assigning Task");
                 return Result.Failure("Issue Assigning Task");
             }
 

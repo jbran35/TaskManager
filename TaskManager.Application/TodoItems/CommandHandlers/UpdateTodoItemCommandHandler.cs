@@ -49,9 +49,7 @@ namespace TaskManager.Application.TodoItems.CommandHandlers
 
             if (todoItem.AssigneeId != Guid.Empty && todoItem.AssigneeId is not null)
             {
-               
                 var idString = todoItem.AssigneeId.ToString() ?? string.Empty;
-
                 var assignee = await _userManager.FindByIdAsync(idString);
 
                 if (assignee is not null)
@@ -61,7 +59,6 @@ namespace TaskManager.Application.TodoItems.CommandHandlers
                     sendRefreshNotification = true;
                 }
             }
-
 
             //Update properties if they are provided in the request
             if (request.NewTitle is not null)
@@ -137,8 +134,6 @@ namespace TaskManager.Application.TodoItems.CommandHandlers
                     _cache.Remove(key); ;
                 }
 
-
-
                 return Result<TodoItemEntry>.Success(listEntryDto);
             }
 
@@ -146,7 +141,6 @@ namespace TaskManager.Application.TodoItems.CommandHandlers
             {
                 return Result<TodoItemEntry>.Failure("Issue Updating Task."); 
             }
-
         }
     }
 }

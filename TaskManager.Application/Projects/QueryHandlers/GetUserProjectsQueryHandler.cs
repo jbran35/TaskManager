@@ -48,14 +48,16 @@ namespace TaskManager.Application.Projects.QueryHandlers
             _logger.LogInformation("No Project Tiles found in cache. Pulling from the Repository...");
 
             //Validate tiles list
-            var projectTiles = await unitOfWork.ProjectRepository
+            var readOnlyList = await unitOfWork.ProjectRepository
                 .GetAllProjectsByOwnerIdAsync(request.UserId, cancellationToken);
+
+            var projectTiles = readOnlyList.Cast<ProjectTileDto>().ToList(); 
 
             if (projectTiles is null)
                 return Result<List<ProjectTileDto>>.Failure("Issue Loading Projects");
 
 
-            var tileDtos = projectTiles.ToProjectTileDtoList();
+            //var tileDtos = projectTiles.ToProjectTileDtoList();
 
             //Save to cache
             try
@@ -68,7 +70,7 @@ namespace TaskManager.Application.Projects.QueryHandlers
                     AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1)
                 };
 
-                string projectTilesJson = JsonSerializer.Serialize(tileDtos);
+                string projectTilesJson = JsonSerializer.Serialize(projectTiles);
                 await _cache.SetStringAsync(key, projectTilesJson, options, cancellationToken);
             }
 
@@ -77,7 +79,7 @@ namespace TaskManager.Application.Projects.QueryHandlers
                 _logger.LogError(ex, "Redis Error:");
             }
 
-            return Result<List<ProjectTileDto>>.Success(tileDtos!, "Projects Retrieved Successfully");
+            return Result<List<ProjectTileDto>>.Success(projectTiles!, "Projects Retrieved Successfully");
         }
     }
 }

@@ -1,8 +1,6 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
-using TaskManager.Application.Common;
 using TaskManager.Application.Projects.Commands;
 using TaskManager.Application.TodoItems.DTOs;
 using TaskManager.Domain.Common;
@@ -12,12 +10,11 @@ using TaskManager.Domain.ValueObjects;
 
 namespace TaskManager.Application.Projects.CommandHandlers
 {
-    public class AddTodoItemCommandHandler(IUnitOfWork unitOfWork, UserManager<User> userManager, IDistributedCache cache,
+    public class AddTodoItemCommandHandler(IUnitOfWork unitOfWork, UserManager<User> userManager,
         ILogger<AddTodoItemCommandHandler> logger) : IRequestHandler<AddTodoItemCommand, Result<TodoItemEntry>>
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly UserManager<User> _userManager = userManager;
-        private readonly IDistributedCache _cache = cache;
         private readonly ILogger<AddTodoItemCommandHandler> _logger = logger;
         public async Task<Result<TodoItemEntry>> Handle(AddTodoItemCommand request, CancellationToken cancellationToken)
         {
@@ -88,7 +85,6 @@ namespace TaskManager.Application.Projects.CommandHandlers
             try
             {
                 _logger.LogInformation("Saving Changes");
-
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 var listEntryDto = new TodoItemEntry
@@ -106,21 +102,6 @@ namespace TaskManager.Application.Projects.CommandHandlers
                     CreatedOn = todoItem.CreatedOn,
                     Status = todoItem.Status
                 };
-
-                _logger.LogInformation("Clearing Project Details From Redis");
-
-                string detailsKey = CacheKeys.ProjectDetailedViews(user.Id, project.Id);
-                string tilesKey = CacheKeys.ProjectTiles(user.Id); 
-
-                await _cache.RemoveAsync(detailsKey, cancellationToken);
-                await _cache.RemoveAsync(tilesKey, cancellationToken); 
-
-                if (listEntryDto is not null && listEntryDto.AssigneeId != Guid.Empty && listEntryDto.AssigneeId is not null)
-                {
-                    string assigneeKey = CacheKeys.AssignedTodoItems(listEntryDto.AssigneeId ?? Guid.Empty);
-                    await _cache.RemoveAsync(assigneeKey, cancellationToken);
-                }
-
 
                 return Result<TodoItemEntry>.Success(listEntryDto);
             }

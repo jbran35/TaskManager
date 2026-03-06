@@ -153,7 +153,6 @@ else if (!string.IsNullOrEmpty(errorMessage))
             </TemplateColumn>
             <PropertyColumn Property="@(t => t.Status)" Title="Status" Sortable="true" />
 
-
             <TemplateColumn Context="task" Title="Actions" Align="Align.Center">
 
                 <Button Type="ButtonType.Link" @onclick="@(() => OnShowDetailsModalClick(task))">
@@ -164,7 +163,7 @@ else if (!string.IsNullOrEmpty(errorMessage))
                     <Icon Name="IconName.PencilSquare" Size="IconSize.x5"></Icon>
                 </Button>
 
-            <Button Type="ButtonType.Link" @onclick="@(() => OnShowDeleteModalClick(task.Id, task.Title))">
+            <Button Type="ButtonType.Link" @onclick="@(() => OnShowDeleteModalClick(task))">
                 <Icon Name="IconName.Trash3Fill" Size="IconSize.x5"></Icon>
             </Button>
 
@@ -183,15 +182,7 @@ else if (!string.IsNullOrEmpty(errorMessage))
 @code{
 
     [Inject] protected ToastService ToastService { get; set; } = default!;
-
-    // private bool showCompleted = false; 
     private ProgressGraph progressGraph = default!;
-    // private DoughnutChart doughnutChart = default!;
-    // private DoughnutChartOptions doughnutChartOptions = default!;
-    // private ChartData chartData = new ChartData();
-
-    // private bool isChartInitialized = false;
-    // private bool isChecked = false;
 
     private void RecalculateProgress()
     {
@@ -211,8 +202,6 @@ else if (!string.IsNullOrEmpty(errorMessage))
 
         else
             percentComplete = 0.0;
-        
-       //StateHasChanged();
     }
 }
                                                 @*MODALS*@
@@ -245,7 +234,6 @@ else if (!string.IsNullOrEmpty(errorMessage))
 
             var newCachedDetails = new ProjectDetailsDto
             {
-                //ProjectId, ProjectName, Status, Description, TotalTodoItemsCount, CompletedTodoItemsCount, PercentComplete, List of Tasks (TaskListEntryDto)
                 Id = ProjectId,
                 Title = projectName,
                 Description = projectDescription,
@@ -265,33 +253,26 @@ else if (!string.IsNullOrEmpty(errorMessage))
     //Runs when the user saves the new assignee/user connection
     private async Task OnAssigneeSaved(NewAssigneeCallingOriginEnum origin)
     {
-
         if (origin == NewAssigneeCallingOriginEnum.AddTodoItem)
             await addTodoItemModal.RestoreAddTodoItemModal();
 
         if (origin == NewAssigneeCallingOriginEnum.EditTodoItem)
-        {
             await editTodoItemModal.RestoreEditTodoItemModal();
-        }
     }
 
     private async Task OnNewAssigneeCanceled(NewAssigneeCallingOriginEnum origin)
     {
-
         if(origin == NewAssigneeCallingOriginEnum.AddTodoItem)
             await addTodoItemModal.RestoreAddTodoItemModal();
 
         if (origin == NewAssigneeCallingOriginEnum.EditTodoItem)
             await editTodoItemModal.RestoreEditTodoItemModal();
-
     }
 
     private async Task OnShowAssigneeModal(NewAssigneeCallingOriginEnum origin)
     {
         if (origin == NewAssigneeCallingOriginEnum.AddTodoItem)
-        {
             await addTodoItemModal.OnHideAddTaskModalClick();
-        }
 
         if (origin == NewAssigneeCallingOriginEnum.EditTodoItem)
             await editTodoItemModal.OnHideEditModalClick();
@@ -315,9 +296,7 @@ else if (!string.IsNullOrEmpty(errorMessage))
         taskList = await ProjectStateService.GetProjectTodoItems(ProjectId);
 
         if (taskList is not null)
-        {
             tasks = taskList.AsQueryable();
-        }
 
         RecalculateProgress();
     }
@@ -335,7 +314,6 @@ else if (!string.IsNullOrEmpty(errorMessage))
             tasks = taskList.AsQueryable();
 
         RecalculateProgress();
-
     }
 
     private async Task RefreshFromCache()
@@ -343,20 +321,17 @@ else if (!string.IsNullOrEmpty(errorMessage))
         var details = await ProjectStateService.GetProjectDetails(ProjectId);
 
         if (details is not null)
-        {
             RefreshProjectDetails(details);
-        }
     }
-
 
     private async Task OnShowDetailsModalClick(TodoItemEntry todoItem)
     {
         await detailsModal.OnShowDetailsModalClick(todoItem);
     }
 
-    private async Task OnShowDeleteModalClick(Guid todoItemId, string todoItemTitle)
+    private async Task OnShowDeleteModalClick(TodoItemEntry todoItem)
     {
-        await deleteTodoModal.OnShowDeleteModalClick(todoItemId, todoItemTitle);
+        await deleteTodoModal.OnShowDeleteModalClick(todoItem);
     }
 
     private async Task DeleteTodoItemEntry()
@@ -369,7 +344,6 @@ else if (!string.IsNullOrEmpty(errorMessage))
 
             RecalculateProgress();
         }
-
     }
 
     private async Task OnGoHomeClick()
@@ -419,7 +393,6 @@ else if (!string.IsNullOrEmpty(errorMessage))
         {
             await ProjectStateService.UpdateTodoItemStatus(ProjectId, result.Id);
             await RefreshFromCache();
-
             RecalculateProgress();
         }
     }
@@ -467,9 +440,7 @@ else if (!string.IsNullOrEmpty(errorMessage))
         projectDetails = await ProjectStateService.GetProjectDetails(ProjectId);
 
         if(projectDetails is not null && !projectDetails.IsExpired)
-        {
             RefreshProjectDetails(projectDetails);
-        }
 
         //Check that the project is in cache > If TodoItemList is null - it hasn't been pulled from API > If Empty - has been pulled but there are no TodoItems.
         if (projectDetails is null || !projectDetails.IsComplete || projectDetails.TodoItems is null || projectDetails.IsExpired)

@@ -28,14 +28,10 @@ namespace TaskManager.API.Controllers
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdString))
-            {
                 return Unauthorized(new { Message = "User ID not found in token" });
-            }
 
             var userId = Guid.Parse(userIdString);
-
             var command = new UpdateTodoItemStatusCommand(userId, todoItemId);
-
             var result = await _mediator.Send(command);
 
             return result.IsSuccess ? Ok(result.Value) : BadRequest(result.ErrorMessage);
@@ -72,14 +68,10 @@ namespace TaskManager.API.Controllers
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdString))
-            {
                 return Unauthorized(new { Message = "User ID not found in token" });
-            }
 
             var userId = Guid.Parse(userIdString);
-
             var command = new DeleteTodoItemCommand(userId, todoItemId);
-
             var result = await _mediator.Send(command);
 
             return result.IsSuccess ? Ok(result.SuccessMessage) : BadRequest(result.ErrorMessage);
@@ -89,19 +81,14 @@ namespace TaskManager.API.Controllers
         [HttpGet("MyAssignedTasks")]
         public async Task<ActionResult<List<TodoItemEntry>>> GetAssignedTodoItems()
         {
-
             //Validate user identity
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdString))
-            {
                 return Unauthorized(new { Message = "User ID not found in token" });
-            }
 
             var userId = Guid.Parse(userIdString);
-
             var query = new GetAssignedTodoItemsQuery(userId);
-
             var result = await _mediator.Send(query);
 
             return result.IsSuccess ? Ok(result.Value) : BadRequest(result.ErrorMessage);
@@ -116,14 +103,10 @@ namespace TaskManager.API.Controllers
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdString))
-            {
                 return Unauthorized(new { Message = "User ID not found in token" });
-            }
 
             var userId = Guid.Parse(userIdString);
-
             var query = new GetTodoItemDetailedViewQuery(todoItemId, userId);
-
             var result = await _mediator.Send(query);
 
             return result.IsSuccess ? Ok(result.Value) : BadRequest(result.ErrorMessage);
@@ -139,18 +122,12 @@ namespace TaskManager.API.Controllers
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdString))
-            {
                 return Unauthorized(new { Message = "User ID not found in token" });
-            }
 
             var userId = Guid.Parse(userIdString);
-
             var command = new UpdateTodoItemCommand(userId, request.ProjectId, todoItemId, request.AssigneeId, request.Title, request.Description, 
                 request.Priority, request.DueDate);
-
             var result = await _mediator.Send(command);
-
-            //await hubContext.Clients.All.SendAsync("TodoItem Updated Successful (hub context)"); 
 
             return result.IsSuccess ? Ok(result.Value) : BadRequest(result.ErrorMessage);
 

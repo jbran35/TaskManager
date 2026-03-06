@@ -1,10 +1,10 @@
 ﻿@using BlazorBootstrap
+@using TaskManager.Application.TodoItems.DTOs
 @using TaskManager.Application.TodoItems.DTOs.Responses
 @using TaskManager.Presentation.Components.Pages
 @using TaskManager.Presentation.Services
 @inject ApiClientService ApiClientService
 @inject ProjectStateService ProjectStateService
-
 
 <Modal @ref="deleteModal" Title=Delete>
     <BodyTemplate>
@@ -16,28 +16,23 @@
     </FooterTemplate>
 </Modal>
 
-
 @code {
     [Inject] protected ToastService ToastService { get; set; } = default!;
-
     [Parameter] public EventCallback OnTodoItemDeleted { get; set; }
     [Parameter] public Guid TodoItemId { get; set; }
     [Parameter] public Guid ProjectId { get; set; }
+   // [Parameter] public Guid AssigneeId { get; set; }
 
     private bool IsDeleteClicked = false; 
     private Modal deleteModal = default!;
     private Guid deleteModalGuid = Guid.Empty;
-    //private bool confirmedDelete = false;
     private string todoName = string.Empty;
 
-
-
     //Delete Modal Logic
-    public async Task OnShowDeleteModalClick(Guid todoItemId, string taskName)
+    public async Task OnShowDeleteModalClick(TodoItemEntry todoItem)
     {
-        TodoItemId = todoItemId; 
-        //deleteModalGuid = todoItemId;
-        todoName = taskName;
+        TodoItemId = todoItem.Id; 
+        todoName = todoItem.Title;
         await deleteModal.ShowAsync();
     }
 
@@ -59,15 +54,10 @@
             ToastService.Notify(new(ToastType.Danger, await response.Content.ReadAsStringAsync()));
 
         else if(response.IsSuccessStatusCode)
-        {
             await ProjectStateService.RemoveTodoItem(ProjectId, TodoItemId);
-        }
 
         IsDeleteClicked = false; 
         await deleteModal.HideAsync();
-
         await OnTodoItemDeleted.InvokeAsync();
-
-
     }
 }

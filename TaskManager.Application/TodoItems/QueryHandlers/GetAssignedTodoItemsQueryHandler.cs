@@ -42,20 +42,9 @@ namespace TaskManager.Application.TodoItems.QueryHandlers
             _logger.LogInformation("Getting Assigned Items From Database");
 
             //Get & Validate Items
-            var assignedItems = await _unitOfWork.TodoItemRepository
-                .GetMyAssignedTodoItemsAsync(request.UserId, cancellationToken)
-                .Select(t => new TodoItemEntry
-                {
-                    Id = t.Id,
-                    Title = t.Title,
-                    ProjectTitle = t.Project.Title,
-                    AssigneeName = t.Assignee != null ? t.Assignee.FullName : string.Empty,
-                    OwnerName = t.Owner != null ? t.Owner.FullName : string.Empty,
-                    Priority = t.Priority, 
-                    DueDate = t.DueDate, 
-                    CreatedOn = t.CreatedOn, 
-                    Status = t.Status
-                }).ToListAsync(cancellationToken);
+            var readOnlyList = await _unitOfWork.TodoItemRepository.GetMyAssignedTodoItemsAsync(request.UserId, cancellationToken); 
+
+            var assignedItems = readOnlyList.Cast<TodoItemEntry>().ToList();
 
             if (assignedItems is null)
                 return Result<List<TodoItemEntry>>.Failure("Issue Retrieving Tasks");

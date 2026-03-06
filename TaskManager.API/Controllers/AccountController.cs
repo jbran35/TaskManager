@@ -7,7 +7,6 @@ using TaskManager.Application.UserConnections.Commands;
 using TaskManager.Application.UserConnections.DTOs;
 using TaskManager.Application.UserConnections.DTOs.Requests;
 using TaskManager.Application.UserConnections.DTOs.Responses;
-
 using TaskManager.Application.UserConnections.Queries;
 using TaskManager.Application.Users.Commands;
 using TaskManager.Application.Users.DTOs;
@@ -29,7 +28,6 @@ namespace TaskManager.API.Controllers
         private readonly IMediator _mediator = mediator; 
         private readonly ITokenService _tokenService = tokenService;
 
-
         //Delete endpoint for removing an assignee connection.
         [HttpDelete("assignees/{connectionId}")]
         public async Task<ActionResult<DeleteAssigneeResponse>> DeleteAssigneeAsync([FromRoute] Guid connectionId)
@@ -38,14 +36,10 @@ namespace TaskManager.API.Controllers
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdString))
-            {
                 return Unauthorized(new { Message = "Unauthorized" });
-            }
 
             var userId = Guid.Parse(userIdString);
-
             var command = new DeleteUserConnectionCommand(userId, connectionId);
-
             var result = await _mediator.Send(command);
 
             return result.IsSuccess ? Ok(result) : BadRequest(result.ErrorMessage);
@@ -59,18 +53,13 @@ namespace TaskManager.API.Controllers
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdString))
-            {
                 return Unauthorized(new { Message = "Unauthorized" });
-            }
 
             var userId = Guid.Parse(userIdString);
-
             var command = new CreateUserConnectionCommand(userId, connectionRequest.AssigneeId);
-
             var result = await _mediator.Send(command);
 
             return result.IsSuccess ? Ok(result.Value) : BadRequest(result.ErrorMessage);
-
         }
 
         //Endpoint for retrieving all assignee connections for the authenticated user.
@@ -81,14 +70,10 @@ namespace TaskManager.API.Controllers
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdString))
-            {
                 return Unauthorized(new { Message = "Unauthorized" });
-            }
 
             var userId = Guid.Parse(userIdString);
-
             var query = new GetActiveUserConnectionsQuery(userId);
-
             var result = await _mediator.Send(query);
 
             return result.IsSuccess ? Ok(result.Value) : BadRequest(result.ErrorMessage);
@@ -104,14 +89,10 @@ namespace TaskManager.API.Controllers
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdString))
-            {
                 return Unauthorized(new { Message = "User ID not found in token" });
-            }
 
             var userId = Guid.Parse(userIdString);
-
             var query = new GetUserQuery(userEmail);
-
             var result = await _mediator.Send(query);
 
             return result.IsSuccess ? Ok(result.Value) : BadRequest(result.ErrorMessage);
@@ -123,15 +104,10 @@ namespace TaskManager.API.Controllers
         {
             Console.WriteLine("In Login Endpoint");
             if (!ModelState.IsValid)
-            {
-                Console.WriteLine("Model Not Valid. Returning...");
                 return BadRequest(ModelState);
-            }
 
             if (model.Username is null || model.Password is null)
-            {
                 return BadRequest();
-            }
 
             var loginRequest = new LoginUserRequest
             {
@@ -143,9 +119,7 @@ namespace TaskManager.API.Controllers
             var response = await _mediator.Send(command);
 
             if (!response.Success || response.Token is null)
-            {
                 return Unauthorized(new { Message = response.Message });
-            }
 
             Response.Cookies.Append("authToken", response.Token, new CookieOptions
             {
@@ -173,9 +147,7 @@ namespace TaskManager.API.Controllers
         public async Task<ActionResult> Register([FromBody] RegisterModel model)
         {
             if (!ModelState.IsValid || model is null)
-            {
                 return BadRequest(ModelState);
-            }
 
             if (model.Username is null || model.Password is null || model.Email is null ||
                 model.FirstName is null || model.LastName is null)
@@ -197,9 +169,7 @@ namespace TaskManager.API.Controllers
             var response = await _mediator.Send(command);
 
             if (!response.Success)
-            {
                 return BadRequest(new { Message = response.Message });
-            }
 
             return Ok(new { Message = "User registered successfully" });
         }

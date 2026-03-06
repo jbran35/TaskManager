@@ -1,8 +1,9 @@
 ﻿using MediatR;
+using TaskManager.Application.Common;
+using TaskManager.Application.Interfaces;
 using TaskManager.Application.TodoItems.DTOs;
 using TaskManager.Domain.Common;
 using TaskManager.Domain.Enums;
-using TaskManager.Domain.Interfaces;
 
 namespace TaskManager.Application.TodoItems.Commands
 {
@@ -17,5 +18,19 @@ namespace TaskManager.Application.TodoItems.Commands
 
         Priority? NewPriority,
         DateTime? NewDueDate
-        ) : IRequest<Result<TodoItemEntry>>;
+        ) : IRequest<Result<TodoItemEntry>>, ICacheInvalidator
+    {
+        public string[] Keys => GetKeys().ToArray();
+
+        private IEnumerable<string> GetKeys()
+        {
+            yield return CacheKeys.ProjectTiles(UserId);
+            yield return CacheKeys.ProjectDetailedViews(UserId, ProjectId); 
+
+            if (AssigneeId.HasValue && AssigneeId != UserId)
+            {
+                yield return CacheKeys.AssignedTodoItems(AssigneeId ?? Guid.Empty); 
+            }
+        }
+    }
 }

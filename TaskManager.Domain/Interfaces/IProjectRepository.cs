@@ -29,7 +29,7 @@ namespace TaskManager.Domain.Interfaces
         /// </summary>
         /// <param name="userId"></param>
         /// <returns></returns>
-        Task<IEnumerable<IProjectTile>> GetAllProjectsByOwnerIdAsync(Guid userId, CancellationToken cancellationToken);
+        Task<IReadOnlyList<IProjectTile>> GetAllProjectsByOwnerIdAsync(Guid userId, CancellationToken cancellationToken);
 
 
         /// <summary>

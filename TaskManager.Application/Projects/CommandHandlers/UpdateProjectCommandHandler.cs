@@ -11,12 +11,10 @@ using TaskManager.Domain.Interfaces;
 
 namespace TaskManager.Application.Projects.CommandHandlers
 {
-    public class UpdateProjectCommandHandler(IUnitOfWork unitOfWork, UserManager<User> userManager, 
-        IDistributedCache cache, ILogger<UpdateProjectCommandHandler> logger) : IRequestHandler<UpdateProjectCommand, Result<ProjectDetailsDto>>
+    public class UpdateProjectCommandHandler(IUnitOfWork unitOfWork, UserManager<User> userManager, ILogger<UpdateProjectCommandHandler> logger) : IRequestHandler<UpdateProjectCommand, Result<ProjectDetailsDto>>
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly UserManager<User> _userManager = userManager;
-        private readonly IDistributedCache _cache = cache;
         private readonly ILogger<UpdateProjectCommandHandler> _logger = logger; 
         public async Task<Result<ProjectDetailsDto>> Handle(UpdateProjectCommand request, CancellationToken cancellationToken)
         {
@@ -69,17 +67,7 @@ namespace TaskManager.Application.Projects.CommandHandlers
                     Title = project.Title,
                     Description = project.Description,
                     CreatedOn = project.CreatedOn
-
                 };
-
-                string detailsKey = CacheKeys.ProjectDetailedViews(user.Id, project.Id);
-                string tilesKey = CacheKeys.ProjectTiles(user.Id);
-
-                _logger.LogInformation("Removing ProjectDetailsKey From Redis");
-                await _cache.RemoveAsync(detailsKey, cancellationToken);
-
-                _logger.LogInformation("Removing ProjectTilesKey From Redis");
-                await _cache.RemoveAsync(tilesKey, cancellationToken); 
 
                 return Result<ProjectDetailsDto>.Success(response);
             }

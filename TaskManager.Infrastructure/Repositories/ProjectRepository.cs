@@ -21,7 +21,7 @@ namespace TaskManager.Infrastructure.Repositories
             _context.Projects.Remove(project);
         }
 
-        public async Task<IEnumerable<IProjectTile>> GetAllProjectsByOwnerIdAsync(Guid userId, CancellationToken cancellationToken)
+        public async Task<IReadOnlyList<IProjectTile>> GetAllProjectsByOwnerIdAsync(Guid userId, CancellationToken cancellationToken)
         {
             return await _context.Projects
                 .Where(p => p.OwnerId == userId && p.Status != Status.Deleted)

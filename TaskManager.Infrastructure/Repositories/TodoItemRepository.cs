@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using TaskManager.Application.TodoItems.DTOs;
 using TaskManager.Domain.Entities;
 using TaskManager.Domain.Enums;
 using TaskManager.Domain.Interfaces;
@@ -19,10 +20,26 @@ namespace TaskManager.Infrastructure.Repositories
             _context.Remove(todoItem);
         }
 
-        public async Task<List<TodoItem>> GetMyAssignedTodoItemsAsync(Guid userId, CancellationToken cancellationToken)
+        public async Task<IReadOnlyList<ITodoItemEntry>> GetMyAssignedTodoItemsAsync(Guid userId, CancellationToken cancellationToken)
         {
+            //Id, AssigneeId, OwnerId, Title, Description, ProjectTitle, AssigneeName, OwnerName, Priority, DueDate, CreatedOn, Status
+
             return await _context.TodoItems
                 .Where(t => t.AssigneeId == userId && t.Status != Status.Deleted)
+                .Select(t => new TodoItemEntry
+                {
+                    Id = t.Id, 
+                    AssigneeId = t.AssigneeId,
+                    OwnerId = t.OwnerId, 
+                    Title = t.Title, 
+                    Description = t.Description,
+                    ProjectTitle = t.Project.Title, 
+                    OwnerName = (t.Owner != null) ? t.Owner.FullName : string.Empty, 
+                    Priority = t.Priority, 
+                    DueDate = t.DueDate,
+                    CreatedOn = t.CreatedOn,
+                    Status = t.Status
+                })
                 .ToListAsync(cancellationToken);
         }
 
