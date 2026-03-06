@@ -27,10 +27,9 @@ namespace TaskManager.Application.TodoItems.Commands
             yield return CacheKeys.ProjectTiles(UserId);
             yield return CacheKeys.ProjectDetailedViews(UserId, ProjectId); 
 
-            if (AssigneeId.HasValue && AssigneeId != UserId)
-            {
-                yield return CacheKeys.AssignedTodoItems(AssigneeId ?? Guid.Empty); 
-            }
+            //New Assignee
+            if (AssigneeId is not null && AssigneeId != Guid.Empty)
+                yield return CacheKeys.AssignedTodoItems(AssigneeId.Value); 
         }
     }
 }

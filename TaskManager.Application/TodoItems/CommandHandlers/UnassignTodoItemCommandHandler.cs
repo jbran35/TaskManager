@@ -1,5 +1,7 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Caching.Distributed;
+using TaskManager.Application.Common;
 using TaskManager.Application.TodoItems.Commands;
 using TaskManager.Domain.Common;
 using TaskManager.Domain.Entities;
@@ -7,30 +9,27 @@ using TaskManager.Domain.Interfaces;
 
 namespace TaskManager.Application.TodoItems.CommandHandlers
 {
-    public class UnassignTodoItemCommandHandler(IUnitOfWork unitOfWork, UserManager<User> userManaager) : IRequestHandler<UnassignTodoItemCommand, Result>
+    public class UnassignTodoItemCommandHandler(IUnitOfWork unitOfWork, IDistributedCache cache, UserManager<User> userManaager) : IRequestHandler<UnassignTodoItemCommand, Result>
     {
             private readonly IUnitOfWork _unitOfWork = unitOfWork;
+            private readonly IDistributedCache _cache = cache;
             private readonly UserManager<User> _userManager = userManaager;
         public async Task<Result> Handle(UnassignTodoItemCommand request, CancellationToken cancellationToken)
         {
-            // Validate request
-            if (request is null || request.ProjectId == Guid.Empty || request.UserId == Guid.Empty || request.TodoItemId == Guid.Empty)
-                return Result.Failure("Invalid Request.");
-
-            // Check if user exists
             var user = await _userManager.FindByIdAsync(request.UserId.ToString());
-
             if (user is null)
                 return Result.Failure("User Not Found.");
 
             var project = await _unitOfWork.ProjectRepository.GetProjectWithoutTasksAsync(request.ProjectId, cancellationToken);
             var todoItem = await _unitOfWork.TodoItemRepository.GetTodoItemByIdAsync(request.TodoItemId, cancellationToken);
 
-            // Validate project & todo item existence, ownership
             if (project is null || todoItem is null || todoItem.ProjectId != project.Id || project.OwnerId != user.Id || todoItem.OwnerId != user.Id)
                 return Result.Failure("Project or Task Not Found.");
 
-            // Unassign the todo item & save changes
+            var assigneeKey = string.Empty;
+            if (todoItem.AssigneeId is not null && todoItem.AssigneeId != Guid.Empty)
+                assigneeKey = CacheKeys.AssignedTodoItems((Guid) todoItem.AssigneeId); 
+
             var result = todoItem.Unassign();
 
             if (result.IsFailure)
@@ -40,6 +39,9 @@ namespace TaskManager.Application.TodoItems.CommandHandlers
             {
                 _unitOfWork.TodoItemRepository.Update(todoItem);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                if (assigneeKey != string.Empty)
+                    await _cache.RemoveAsync(assigneeKey, cancellationToken);
             }
             catch (Exception)
             {

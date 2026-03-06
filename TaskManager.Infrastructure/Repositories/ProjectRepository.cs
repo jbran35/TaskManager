@@ -45,6 +45,15 @@ namespace TaskManager.Infrastructure.Repositories
                 .FirstOrDefaultAsync(p => p.Id == projectId && p.Status != Status.Deleted, cancellationToken);
         }
 
+        public async Task<List<Guid>> GetProjectTodoItemAssigneeIds(Guid projectId, CancellationToken cancellationToken)
+        {
+            return await _context.TodoItems
+                .Where(t => t.ProjectId == projectId && t.AssigneeId != null && t.AssigneeId != Guid.Empty)
+                .Select(t => t.AssigneeId!.Value)
+                .Distinct()
+                .ToListAsync();
+        }
+
         public async Task<Project?> GetProjectWithTasksAsync(Guid projectId, CancellationToken cancellationToken)
         {
             return await _context.Projects

@@ -8,14 +8,17 @@ namespace TaskManager.Application.TodoItems.Validators
         public UnassignTodoItemCommandValidator()
         {
             RuleFor(x => x.UserId)
+                .NotNull()
                 .NotEmpty()
                 .WithMessage("Your ID Is Required To Unassign This Task");
 
             RuleFor(x => x.ProjectId)
+              .NotNull()
               .NotEmpty()
               .WithMessage("This Project's ID Is Required To Unassign This Task");
 
             RuleFor(x => x.TodoItemId)
+              .NotNull()
               .NotEmpty()
               .WithMessage("This Task's ID Is Required To Unassign It");
 

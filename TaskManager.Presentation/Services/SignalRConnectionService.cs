@@ -9,8 +9,7 @@ namespace TaskManager.Presentation.Services
     {
         private HubConnection? _hubConnection;
         private readonly AuthenticationStateProvider _authStateProvider = authStateProvider;
-        public event Action? OnTaskUpdated;
-
+        public event Func<Task>? OnTaskUpdated;
 
         public HubConnectionState HubState => _hubConnection?.State ?? HubConnectionState.Disconnected;
         public bool IsConnected => HubState == HubConnectionState.Connected;

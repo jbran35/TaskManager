@@ -18,21 +18,15 @@ namespace TaskManager.Application.TodoItems.CommandHandlers
         public async Task<Result> Handle(AssignTodoItemCommand request, CancellationToken cancellationToken)
         {
             _logger.LogInformation("In Handler"); 
-            if (request is null || request.UserId == Guid.Empty || request.ProjectId == Guid.Empty || request.AssigneeId == Guid.Empty)
-                return Result.Failure("Invalid Request.");
-
             var user = await _userManager.FindByIdAsync(request.UserId.ToString());
             if (user is null)
                 return Result.Failure("User Not Found.");
 
             var todoItem = await _unitOfWork.TodoItemRepository.GetTodoItemByIdAsync(request.TodoItemId, cancellationToken);
-    
-
             if (todoItem is null || todoItem.Project is null || todoItem.OwnerId != request.UserId || todoItem.Project.OwnerId != request.UserId)
                 return Result.Failure("Task Or Project Not Found.");
 
             var assignee = await _userManager.FindByIdAsync(request.AssigneeId.ToString());
-
             if (assignee is null)
                 return Result.Failure("Assignee Not Found.");
 

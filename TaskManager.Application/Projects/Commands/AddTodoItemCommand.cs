@@ -30,7 +30,8 @@ namespace TaskManager.Application.Projects.Commands
 
             if (AssigneeId is not null && AssigneeId.HasValue && AssigneeId != UserId)
             {
-                yield return CacheKeys.AssignedTodoItems(AssigneeId ?? Guid.Empty); 
+                yield return CacheKeys.AssignedTodoItems(AssigneeId ?? Guid.Empty);
+                Console.WriteLine("Removing Key: " + CacheKeys.AssignedTodoItems(AssigneeId ?? Guid.Empty));
             }
         }
     }

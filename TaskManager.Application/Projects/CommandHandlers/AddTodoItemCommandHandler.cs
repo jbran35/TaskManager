@@ -19,23 +19,14 @@ namespace TaskManager.Application.Projects.CommandHandlers
         public async Task<Result<TodoItemEntry>> Handle(AddTodoItemCommand request, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Handling Command"); 
-
-            //Check if the request is valid
-            if (request is null || request.UserId == Guid.Empty)
-                return Result<TodoItemEntry>.Failure("Invalid request.");
-
-            if(request.ProjectId == Guid.Empty)
-                return Result<TodoItemEntry>.Failure("Invalid project ID.");
-
+          
             //Check if the user exists
             var user = await _userManager.FindByIdAsync(request.UserId.ToString());
-            
             if (user is null)
                 return Result<TodoItemEntry>.Failure("User not found.");
 
             //Check if the project exists and belongs to the user
             var project = await _unitOfWork.ProjectRepository.GetProjectWithoutTasksAsync(request.ProjectId, cancellationToken);
-
             if (project is null)
                 return Result<TodoItemEntry>.Failure("Project not found.");
 
@@ -44,7 +35,7 @@ namespace TaskManager.Application.Projects.CommandHandlers
 
             string? assigneeId = null; 
 
-            //If the assigneeId is an Empty Guid, so it is clear it is unassigned and doesn't violate Foreign Key rule
+            //If the assigneeId is an Empty Guid, it is clear it is unassigned and doesn't violate Foreign Key rule
             if(request.AssigneeId != Guid.Empty && request.AssigneeId is not null)
                 assigneeId = request.AssigneeId.ToString();
 
@@ -60,12 +51,10 @@ namespace TaskManager.Application.Projects.CommandHandlers
             }
 
             var todoItemTitleResult = Title.Create(request.Title);
-
             if (todoItemTitleResult.IsFailure)
                 return Result<TodoItemEntry>.Failure(todoItemTitleResult.ErrorMessage ?? "Invalid project title.");
 
             var todoItemDescriptionResult = Description.Create(request.Description!);
-
             if (todoItemDescriptionResult.IsFailure)
                 return Result<TodoItemEntry>.Failure(todoItemDescriptionResult.ErrorMessage ?? "Invalid project description.");
 

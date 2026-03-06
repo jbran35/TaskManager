@@ -22,14 +22,12 @@ namespace TaskManager.Application.Projects.CommandHandlers
         public async Task<Result<CompleteProjectResponse>> Handle(CompleteProjectCommand request, CancellationToken cancellationToken)
         {
             _logger.LogInformation("In Handler");
-            if (request is null || request.UserId == Guid.Empty || request.ProjectId == Guid.Empty)
-                return Result<CompleteProjectResponse>.Failure("Invalid request.");
 
             var user = await _userManager.FindByIdAsync(request.UserId.ToString());
             if (user is null)
                 return Result<CompleteProjectResponse>.Failure("User not found.");
 
-            var project = await _unitOfWork.ProjectRepository.GetProjectWithTasksAsync(request.ProjectId, cancellationToken);
+            var project = await _unitOfWork.ProjectRepository.GetProjectWithoutTasksAsync(request.ProjectId, cancellationToken);
 
             if(project is null)
                 return Result<CompleteProjectResponse>.Failure("Project not found.");
@@ -37,11 +35,9 @@ namespace TaskManager.Application.Projects.CommandHandlers
             if(request.UserId != project.OwnerId)
                 return Result<CompleteProjectResponse>.Failure("Unauthorized.");
 
-            var assigneeIds = project.TodoItems
-                .Where(t => t.AssigneeId is not null && t.AssigneeId != Guid.Empty)
-                .Select(t => t.AssigneeId)
-                .Distinct()
-                .ToArray();
+            //Handling assignee keys here because they may not be accessible from Presentation
+            //at the time of project completion (to pass to CacheInvalidator)
+            var assigneeIds = await _unitOfWork.ProjectRepository.GetProjectTodoItemAssigneeIds(request.ProjectId, cancellationToken);
 
             _logger.LogInformation("Marking Complete");
             var result = project.MarkAsComplete();
@@ -66,19 +62,15 @@ namespace TaskManager.Application.Projects.CommandHandlers
 
                 var response = new CompleteProjectResponse(newProjectTile);
 
-                var keys = new List<string>();
-                keys.Add(CacheKeys.ProjectTiles(user.Id));
-                keys.Add(CacheKeys.ProjectDetailedViews(user.Id, project.Id)); 
-
-                foreach(var id in assigneeIds)
+                if (assigneeIds.Count > 0)
                 {
-                    keys.Add(CacheKeys.AssignedTodoItems(id ?? Guid.Empty)); 
-                }
+                    _logger.LogInformation("More than 1 AssigneeKeys found");
 
-                foreach (var key in keys)
-                {
-                    _logger.LogInformation("Removing with key: " + key);
-                    await _cache.RemoveAsync(key); 
+                    foreach (var key in assigneeIds)
+                    {
+                        _logger.LogInformation("Removing: " + key);
+                        await _cache.RemoveAsync(CacheKeys.AssignedTodoItems(key), cancellationToken);
+                    }
                 }
 
                 _logger.LogInformation("Returning");

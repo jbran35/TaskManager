@@ -40,7 +40,7 @@ namespace TaskManager.API.Controllers
 
         //Endpoint to create new project
         [HttpPost]
-        public async Task<ActionResult<Application.Projects.DTOs.ProjectTileDto>> Create([FromBody] CreateProjectRequest request)
+        public async Task<ActionResult<ProjectTileDto>> Create([FromBody] CreateProjectRequest request)
         {
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 

@@ -45,6 +45,13 @@ namespace TaskManager.Domain.Interfaces
 
 
         /// <summary>
+        /// Retrieves a list of the Guid Ids for any uesr assigned to the project's tasks (i.e., helper for Redis managmeent)
+        /// </summary>
+        /// <param name="projectId"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        Task<List<Guid>> GetProjectTodoItemAssigneeIds(Guid projectId, CancellationToken cancellationToken);
+        /// <summary>
         ///     Retrieves the project that matches the specified identifier, including all associated tasks.
         /// </summary>
         /// 
