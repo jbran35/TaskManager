@@ -1,6 +1,8 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Logging;
+using System.Globalization;
 using TaskManager.Application.Common;
 using TaskManager.Application.Interfaces;
 using TaskManager.Application.TodoItems.Commands;
@@ -13,14 +15,16 @@ using TaskManager.Domain.ValueObjects;
 namespace TaskManager.Application.TodoItems.CommandHandlers
 {
     public class UpdateTodoItemCommandHandler(IUnitOfWork unitOfWork, UserManager<User> userManager, 
-        ITodoItemUpdateNotificationService updateNotificationService, IDistributedCache _cache) : IRequestHandler<UpdateTodoItemCommand, Result<TodoItemEntry>>
+        ITodoItemUpdateNotificationService updateNotificationService, IDistributedCache _cache, ILogger<UpdateTodoItemCommandHandler> logger) : IRequestHandler<UpdateTodoItemCommand, Result<TodoItemEntry>>
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly UserManager<User> _userManager = userManager;
         private readonly ITodoItemUpdateNotificationService _updateNotificationService = updateNotificationService;
+        private readonly ILogger<UpdateTodoItemCommandHandler> _logger = logger; 
 
         public async Task<Result<TodoItemEntry>> Handle(UpdateTodoItemCommand request, CancellationToken cancellationToken)
         {
+            _logger.LogInformation("In Handler"); 
             var user = await _userManager.FindByIdAsync(request.UserId.ToString());
             if (user is null)
                 return Result<TodoItemEntry>.Failure("User Not Found");
@@ -54,20 +58,25 @@ namespace TaskManager.Application.TodoItems.CommandHandlers
             if (request.NewPriority is not null)
                 todoItem.UpdatePriority(request.NewPriority.Value);
 
+            _logger.LogInformation("Assessing Assignee Changes");
+
             bool hasExistingAssignee = todoItem.AssigneeId is not null && todoItem.AssigneeId != Guid.Empty;
             string existingAssigneeId = hasExistingAssignee ? todoItem.AssigneeId!.Value.ToString() : string.Empty;
             
             bool hasRequestedAssignee = request.AssigneeId is not null && request.AssigneeId != Guid.Empty;
             bool switchingAssignees = hasExistingAssignee && hasRequestedAssignee && request.AssigneeId != todoItem.AssigneeId;
-            bool unassigning = hasExistingAssignee && !hasRequestedAssignee; 
+            bool unassigning = hasExistingAssignee && !hasRequestedAssignee;
+
+            _logger.LogInformation("HasExistingAssignee: " + hasExistingAssignee + "\n ExistingAssigneeId: " + existingAssigneeId + "\n HasRequestedAssignee: " + hasRequestedAssignee
+                + "\n SwitchingAssignees: " + switchingAssignees + "\n Unassigning: " + unassigning + "\n");
 
             //Need to send refresh notification if an assignee is involved at all.
             bool sendRefreshNotification = false;
             if (hasExistingAssignee || hasRequestedAssignee)
                 sendRefreshNotification = true;
 
-            //If switching assignees - must remove old assignee's redis key here
             string currAssigneeKey = string.Empty;
+            string newAssigneeKey = string.Empty; 
 
             if (switchingAssignees || unassigning)
             {
@@ -78,6 +87,8 @@ namespace TaskManager.Application.TodoItems.CommandHandlers
                     var requestAssignee = await _userManager.FindByIdAsync(request.AssigneeId!.Value.ToString());
                     if (requestAssignee is null)
                         return Result<TodoItemEntry>.Failure("Assignee Not Found");
+
+                    newAssigneeKey = CacheKeys.AssignedTodoItems(request.AssigneeId.Value); 
 
                     todoItem.AssignToUser(request.AssigneeId.Value);
                 }
@@ -111,7 +122,14 @@ namespace TaskManager.Application.TodoItems.CommandHandlers
                 };
 
                 if (sendRefreshNotification)
-                    await _cache.RemoveAsync(currAssigneeKey, cancellationToken);
+                {
+                    _logger.LogInformation("In SendRefreshNotification"); 
+                    if(!string.IsNullOrEmpty(currAssigneeKey))
+                        await _cache.RemoveAsync(currAssigneeKey, cancellationToken);
+
+                    if (!string.IsNullOrEmpty(newAssigneeKey))
+                        await _cache.RemoveAsync(newAssigneeKey, cancellationToken); 
+                }
 
                 if (unassigning)
                     await _updateNotificationService.NotifyTodoItemUpdated(todoItem.AssigneeId!.Value.ToString());

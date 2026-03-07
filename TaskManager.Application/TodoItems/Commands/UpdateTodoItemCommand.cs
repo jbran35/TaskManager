@@ -28,8 +28,12 @@ namespace TaskManager.Application.TodoItems.Commands
             yield return CacheKeys.ProjectDetailedViews(UserId, ProjectId); 
 
             //New Assignee
-            if (AssigneeId is not null && AssigneeId != Guid.Empty)
-                yield return CacheKeys.AssignedTodoItems(AssigneeId.Value); 
+            //if (AssigneeId is not null && AssigneeId != Guid.Empty)
+            //{
+            //    yield return CacheKeys.AssignedTodoItems(AssigneeId.Value);
+            //    Console.WriteLine("Clearing New Assignee's Cache");
+            //}
+
         }
     }
 }

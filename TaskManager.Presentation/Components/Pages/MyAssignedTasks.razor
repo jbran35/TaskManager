@@ -9,10 +9,13 @@
 @using TaskManager.Presentation.Components.Modals
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using TaskManager.Presentation.Services
+@using System.Security.Claims
+
 
 @inject ApiClientService ApiClientService
 @inject NavigationManager NavManager
 @inject AssignedTodoItemsStateService AssignedTodoItemsStateService
+
 @inject SignalRConnectionService SignalRConnectionService
 
 @implements IDisposable
@@ -144,6 +147,9 @@ else
 
     private void HandleStateChanged()
     {
+        
+        Console.WriteLine("\n My assigned tasks handeStateHasChanged() \n");
+
         InvokeAsync(async () =>
         {
             AssignedTodoItemsStateService.Clear();
