@@ -147,9 +147,6 @@ else
 
     private void HandleStateChanged()
     {
-        
-        Console.WriteLine("\n My assigned tasks handeStateHasChanged() \n");
-
         InvokeAsync(async () =>
         {
             AssignedTodoItemsStateService.Clear();
@@ -184,7 +181,6 @@ else
         var client = ApiClientService.GetClient(); 
         var response = await client.PatchAsync($"api/todoitems/UpdateStatus/{todoItemId}", null);
 
-        Console.WriteLine("Back from API call. Success: " + response.IsSuccessStatusCode);
         if (response is null)
         {
             ToastService.Notify(new(ToastType.Danger, "Unexpected Error Updating Task Status"));

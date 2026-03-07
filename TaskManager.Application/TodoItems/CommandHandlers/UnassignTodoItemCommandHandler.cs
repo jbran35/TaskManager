@@ -9,6 +9,7 @@ using TaskManager.Domain.Interfaces;
 
 namespace TaskManager.Application.TodoItems.CommandHandlers
 {
+    //NOT USED CURRENTLY, but could be used to add quick unassignment options on the ProjectDetailedView page. 
     public class UnassignTodoItemCommandHandler(IUnitOfWork unitOfWork, IDistributedCache cache, UserManager<User> userManaager) : IRequestHandler<UnassignTodoItemCommand, Result>
     {
             private readonly IUnitOfWork _unitOfWork = unitOfWork;

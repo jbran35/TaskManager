@@ -25,14 +25,7 @@ namespace TaskManager.Application.Projects.Commands
         private IEnumerable<string> GetKeys()
         {
             yield return CacheKeys.ProjectDetailedViews(UserId, ProjectId);
-
             yield return CacheKeys.ProjectTiles(UserId);
-
-            if (AssigneeId is not null && AssigneeId.HasValue && AssigneeId != UserId)
-            {
-                yield return CacheKeys.AssignedTodoItems(AssigneeId ?? Guid.Empty);
-                Console.WriteLine("Removing Key: " + CacheKeys.AssignedTodoItems(AssigneeId ?? Guid.Empty));
-            }
         }
     }
 }

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using TaskManager.Application.Projects.Commands;
+using TaskManager.Application.Projects.Events;
 using TaskManager.Application.TodoItems.DTOs;
 using TaskManager.Domain.Common;
 using TaskManager.Domain.Entities;
@@ -11,21 +12,20 @@ using TaskManager.Domain.ValueObjects;
 namespace TaskManager.Application.Projects.CommandHandlers
 {
     public class AddTodoItemCommandHandler(IUnitOfWork unitOfWork, UserManager<User> userManager,
-        ILogger<AddTodoItemCommandHandler> logger) : IRequestHandler<AddTodoItemCommand, Result<TodoItemEntry>>
+        ILogger<AddTodoItemCommandHandler> logger, IMediator mediator) : IRequestHandler<AddTodoItemCommand, Result<TodoItemEntry>>
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly UserManager<User> _userManager = userManager;
         private readonly ILogger<AddTodoItemCommandHandler> _logger = logger;
+        private readonly IMediator _mediator = mediator; 
         public async Task<Result<TodoItemEntry>> Handle(AddTodoItemCommand request, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Handling Command"); 
           
-            //Check if the user exists
             var user = await _userManager.FindByIdAsync(request.UserId.ToString());
             if (user is null)
                 return Result<TodoItemEntry>.Failure("User not found.");
 
-            //Check if the project exists and belongs to the user
             var project = await _unitOfWork.ProjectRepository.GetProjectWithoutTasksAsync(request.ProjectId, cancellationToken);
             if (project is null)
                 return Result<TodoItemEntry>.Failure("Project not found.");
@@ -33,21 +33,20 @@ namespace TaskManager.Application.Projects.CommandHandlers
             if(!project.OwnerId.Equals(request.UserId))
                 return Result<TodoItemEntry>.Failure("Unauthorized.");
 
-            string? assigneeId = null; 
+            Guid assigneeId = Guid.Empty;
+            bool hasAssigneeId = request.AssigneeId != Guid.Empty && request.AssigneeId is not null;
+            bool assigneeIsValidated = false;
 
-            //If the assigneeId is an Empty Guid, it is clear it is unassigned and doesn't violate Foreign Key rule
-            if(request.AssigneeId != Guid.Empty && request.AssigneeId is not null)
-                assigneeId = request.AssigneeId.ToString();
-
-            //assigneeId = request.AssigneeId == Guid.Empty ? null : request.AssigneeId;
-            User? assignee = null;
-
-            if (!string.IsNullOrWhiteSpace(assigneeId))
+            if (hasAssigneeId)
             {
+                assigneeId = request.AssigneeId!.Value;
+                User? assignee = null;
                 assignee = await _userManager.FindByIdAsync(assigneeId.ToString());
 
                 if (assignee is null)
                     return Result<TodoItemEntry>.Failure("Assignee Could Not Be Found.");
+
+                assigneeIsValidated = true;
             }
 
             var todoItemTitleResult = Title.Create(request.Title);
@@ -58,7 +57,6 @@ namespace TaskManager.Application.Projects.CommandHandlers
             if (todoItemDescriptionResult.IsFailure)
                 return Result<TodoItemEntry>.Failure(todoItemDescriptionResult.ErrorMessage ?? "Invalid project description.");
 
-            //Validate the todo item details
             var todoItemResult = TodoItem.Create(todoItemTitleResult.Value, todoItemDescriptionResult.Value, request.UserId, request.ProjectId, request.AssigneeId,
                 request.Priority, request.DueDate);
 
@@ -91,6 +89,12 @@ namespace TaskManager.Application.Projects.CommandHandlers
                     CreatedOn = todoItem.CreatedOn,
                     Status = todoItem.Status
                 };
+
+                if (assigneeIsValidated)
+                {
+                    var assignedTodoItemCreatedEvent = new AssignedTodoItemCreatedEvent(assigneeId);
+                    await _mediator.Publish(assignedTodoItemCreatedEvent, cancellationToken);
+                }
 
                 return Result<TodoItemEntry>.Success(listEntryDto);
             }

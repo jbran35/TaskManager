@@ -8,6 +8,7 @@ using TaskManager.Domain.Interfaces;
 
 namespace TaskManager.Application.TodoItems.CommandHandlers
 {
+    //NOT USED CURRENTLY, but could be used to add quick assignment options on the ProjectDetailedView page. 
     public class AssignTodoItemCommandHandler(IUnitOfWork unitOfWork, UserManager<User> userManager, 
         ILogger<AssignTodoItemCommandHandler> logger) 
         : IRequestHandler<AssignTodoItemCommand, Result>
