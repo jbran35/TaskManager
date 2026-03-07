@@ -19,7 +19,15 @@ namespace TaskManager.Presentation.Services
 
         public void AddTodoItem(TodoItemEntry newItem)
         {
-            _assignedTodoItemsCache.Add(newItem);
+            
+            var index = _assignedTodoItemsCache.FindIndex(t => t.Id == newItem.Id);
+
+            if(index != -1)
+            {
+                _assignedTodoItemsCache.RemoveAt(index);
+                _assignedTodoItemsCache.Insert(index, newItem);
+
+            }
         }
 
         public void Clear()

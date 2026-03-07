@@ -21,6 +21,7 @@
 @inject NavigationManager NavManager
 @inject IJSRuntime JSRuntime
 @inject ProjectStateService ProjectStateService
+@inject SignalRConnectionService SignalRConnectionService
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 
@@ -238,11 +239,8 @@ else if (!string.IsNullOrEmpty(errorMessage))
                 Title = projectName,
                 Description = projectDescription,
             };
-
             //await ProjectStateService.SetProjectBasicDetails(newCachedDetails);
         }
-
-        //StateHasChanged();
     }
 
     private async Task OnShowEditProjectModalClick()
@@ -376,8 +374,27 @@ else if (!string.IsNullOrEmpty(errorMessage))
 
     protected override async Task OnInitializedAsync()
     {
+        SignalRConnectionService.OnTaskUpdated += HandleStateChanged;
+        await SignalRConnectionService.InitializeConnection();
         await LoadProject();
         RecalculateProgress(); 
+    }
+
+    private void HandleStateChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            Console.WriteLine("\n IN PROJECT DETAILED VIEW HANDLER \n");
+            await ProjectStateService.ClearProjectDetails(ProjectId); 
+            await ProjectStateService.ClearProjectTiles(); 
+            await LoadProject();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        SignalRConnectionService.OnTaskUpdated -= HandleStateChanged;
     }
 
     private async Task UpdateTodoItemStatus (Guid todoItemId)
@@ -403,7 +420,6 @@ else if (!string.IsNullOrEmpty(errorMessage))
         if (newDetails is not null && newDetails.TodoItems is not null)
         {
             //projectDetails = newDetails;
-
             projectName = newDetails.Title;
             projectDescription = newDetails.Description ?? string.Empty;
             totalTasks = newDetails.TotalTodoItemCount;

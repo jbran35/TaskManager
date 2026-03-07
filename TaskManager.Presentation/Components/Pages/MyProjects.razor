@@ -61,8 +61,6 @@
     <Button Type="ButtonType.Button" @onclick="OpenAddProjectModal">
         <Icon Name="IconName.PlusCircleFill" Size="IconSize.x3" />
     </Button>
-
-
 </div>
 
 <AddProjectModal @ref="addModal" OnProjectCreated="AddProjectTile"></AddProjectModal>
@@ -139,10 +137,8 @@ else
 @code{
     [Inject] protected ToastService ToastService { get; set; } = default!;
 
-
     public List<ProjectTile> incompleteProjects = new List<ProjectTile>(); 
     public List<ProjectTile> completeProjects = new List<ProjectTile>();
-
 
     private AddProjectModal addModal = default!;
     private string errorMessage = string.Empty;

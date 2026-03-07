@@ -9,7 +9,7 @@ namespace TaskManager.Presentation.Services
     {
         private HubConnection? _hubConnection;
         private readonly AuthenticationStateProvider _authStateProvider = authStateProvider;
-        public event Func<Task>? OnTaskUpdated;
+        public event Action? OnTaskUpdated;
 
         public HubConnectionState HubState => _hubConnection?.State ?? HubConnectionState.Disconnected;
         public bool IsConnected => HubState == HubConnectionState.Connected;
@@ -24,6 +24,8 @@ namespace TaskManager.Presentation.Services
         }
         public async Task InitializeConnection()
         {
+            if (_hubConnection is not null) return; 
+
             _hubConnection = new HubConnectionBuilder()
 
             .WithUrl(("https://localhost:7109/taskhub"), options =>
@@ -43,7 +45,10 @@ namespace TaskManager.Presentation.Services
 
             _hubConnection.On("TaskUpdated", async () =>
             {
-                Console.WriteLine("In OnTaskUpdated");
+                var handlers = OnTaskUpdated?.GetInvocationList().Cast<Func<Task>>();
+
+                //if (handlers is not null)
+                //    await Task.WhenAll(handlers.Select(h => h()));
                 OnTaskUpdated?.Invoke();
             });
 

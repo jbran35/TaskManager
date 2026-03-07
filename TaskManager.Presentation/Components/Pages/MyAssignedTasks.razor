@@ -15,7 +15,7 @@
 @inject AssignedTodoItemsStateService AssignedTodoItemsStateService
 @inject SignalRConnectionService SignalRConnectionService
 
-@implmeents IDisposable
+@implements IDisposable
 
 
 @rendermode InteractiveServer
@@ -142,9 +142,9 @@ else
         await LoadMyTasks();
     }
 
-    private async Task HandleStateChanged()
+    private void HandleStateChanged()
     {
-        await InvokeAsync(async () =>
+        InvokeAsync(async () =>
         {
             AssignedTodoItemsStateService.Clear();
             StateHasChanged();
@@ -176,32 +176,79 @@ else
     private async Task UpdateCompletionStatus(Guid todoItemId)
     {
         var client = ApiClientService.GetClient(); 
-        var response = await client.PatchAsync($"api/todoitems/UpdateStatus/{todoItemId}", null); 
-        var result = await response.Content.ReadFromJsonAsync<TodoItemEntry>();
+        var response = await client.PatchAsync($"api/todoitems/UpdateStatus/{todoItemId}", null);
 
+        Console.WriteLine("Back from API call. Success: " + response.IsSuccessStatusCode);
         if (response is null)
         {
             ToastService.Notify(new(ToastType.Danger, "Unexpected Error Updating Task Status"));
             return;
         }
 
-        if (!response.IsSuccessStatusCode || result is null)
+        if (!response.IsSuccessStatusCode)
         {
-            ToastService.Notify(new(ToastType.Danger, $"Failed to complete task. Status code: {response.StatusCode}"));
+            var errorMsg = await response.Content.ReadAsStringAsync();
+            ToastService.Notify(new(ToastType.Danger, errorMsg));
             return;
         }
 
-        var task = taskList?.FirstOrDefault(t => t.Id == todoItemId);
-
-        if (task is not null)
+        try
         {
-            if (result.Status == Status.Incomplete)
-                task.Status = Status.Complete;
+            var result = await response.Content.ReadFromJsonAsync<TodoItemEntry>();
 
-            if (result.Status == Status.Complete)
-                task.Status = Status.Incomplete;
+            if (!response.IsSuccessStatusCode)
+            {
+                ToastService.Notify(new(ToastType.Danger, $"Failed to complete task. Status code: {response.StatusCode}"));
+                return;
+            }
 
-            tasks = taskList.AsQueryable();
+            if (result is null)
+            {
+                ToastService.Notify(new(ToastType.Danger, "Returned task is null"));
+                return;
+            }
+
+            AssignedTodoItemsStateService.AddTodoItem(result); 
+
+            //var index = taskList.FindIndex(t => t.Id == todoItemId);
+
+            // if(index != -1)
+            // {
+            //     taskList[index] = result;
+            // }
+
+            //Console.WriteLine("Is found taks null: " + task is null);
+
+            // if (task is not null)
+            // {
+            //     if (result.Status == Status.Incomplete)
+            //     {
+            //         Console.WriteLine("Marking complete");
+            //         task.Status = Status.Complete;
+
+            //     }
+
+            //     if (result.Status == Status.Complete)
+            //     {
+            //         task.Status = Status.Incomplete;
+            //         Console.WriteLine("Marking incomplete");
+            //     }
+
+            //     tasks = taskList.AsQueryable();
+            // }
+
+
+            // await LoadMyTasks();
+            //AssignedTodoItemsStateService.Clear();
+
+            ToastService.Notify(new(ToastType.Success, "Task Status Updated!"));
+
+
+        }
+
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
         }
     }
 
@@ -255,6 +302,7 @@ else
 
                     AssignedTodoItemsStateService.SetTodoItemsAsync(taskList);
                     tasks = taskList.AsQueryable();
+                    
                 }
                 else
                 {
