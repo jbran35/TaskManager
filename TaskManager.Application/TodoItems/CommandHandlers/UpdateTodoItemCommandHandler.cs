@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
-using System.Globalization;
 using TaskManager.Application.Common;
 using TaskManager.Application.Interfaces;
 using TaskManager.Application.TodoItems.Commands;
@@ -75,12 +74,12 @@ namespace TaskManager.Application.TodoItems.CommandHandlers
             if (hasExistingAssignee || hasRequestedAssignee)
                 sendRefreshNotification = true;
 
-            string currAssigneeKey = string.Empty;
+            string oldAssigneeKey = string.Empty;
             string newAssigneeKey = string.Empty; 
 
             if (switchingAssignees || unassigning)
             {
-                currAssigneeKey = CacheKeys.AssignedTodoItems(todoItem.AssigneeId!.Value); // switchingAssignees cannot be true if todoItem.AssigneeId is null
+                oldAssigneeKey = CacheKeys.AssignedTodoItems(todoItem.AssigneeId!.Value); // switchingAssignees cannot be true if todoItem.AssigneeId is null
 
                 if (switchingAssignees)
                 {
@@ -89,7 +88,6 @@ namespace TaskManager.Application.TodoItems.CommandHandlers
                         return Result<TodoItemEntry>.Failure("Assignee Not Found");
 
                     newAssigneeKey = CacheKeys.AssignedTodoItems(request.AssigneeId.Value); 
-
                     todoItem.AssignToUser(request.AssigneeId.Value);
                 }
 
@@ -123,31 +121,45 @@ namespace TaskManager.Application.TodoItems.CommandHandlers
 
                 if (sendRefreshNotification)
                 {
-                    _logger.LogInformation("In SendRefreshNotification"); 
-                    if(!string.IsNullOrEmpty(currAssigneeKey))
-                        await _cache.RemoveAsync(currAssigneeKey, cancellationToken);
+                    _logger.LogInformation("In SendRefreshNotification");
+                    if (!string.IsNullOrEmpty(oldAssigneeKey))
+                    {
+                        _logger.LogInformation("Clearing oldAssigneeKey");
+                        await _cache.RemoveAsync(oldAssigneeKey, cancellationToken);
+                    }
 
                     if (!string.IsNullOrEmpty(newAssigneeKey))
+                    {
+                        _logger.LogInformation("Clearing newAssigneeKey");
                         await _cache.RemoveAsync(newAssigneeKey, cancellationToken); 
+                    }
                 }
 
                 if (unassigning)
+                {
+                    _logger.LogInformation("Sending SignalR Refresh Notifications For Unassigning");
                     await _updateNotificationService.NotifyTodoItemUpdated(todoItem.AssigneeId!.Value.ToString());
+                }
 
                 else if (switchingAssignees)
                 {
+                    _logger.LogInformation("Sending SignalR Refresh Notifications For Switching Assignees"); 
                     await _updateNotificationService.NotifyTodoItemUpdated(existingAssigneeId);
                     await _updateNotificationService.NotifyTodoItemUpdated(request.AssigneeId!.Value.ToString());
                 }
 
                 else if (hasRequestedAssignee)
+                {
+                    _logger.LogInformation("Sending SignalR Refresh Notifications For Adding Assignee (hasRequestAssignee)");
                     await _updateNotificationService.NotifyTodoItemUpdated(request.AssigneeId!.Value.ToString());
+                }
 
                 return Result<TodoItemEntry>.Success(listEntryDto);
             }
 
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Issue Updating Task");
                 return Result<TodoItemEntry>.Failure("Issue Updating Task."); 
             }
         }
