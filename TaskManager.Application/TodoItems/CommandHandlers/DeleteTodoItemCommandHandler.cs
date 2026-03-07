@@ -48,7 +48,7 @@ namespace TaskManager.Application.TodoItems.CommandHandlers
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 _logger.LogInformation("Removing ProjectDetailsKey");
-                await _cache.RemoveAsync(projectDetailsKey, cancellationToken);
+                await _cache.RemoveAsync(projectDetailsKey, CancellationToken.None);
 
                 _logger.LogInformation("Sending Assignee info to deletionEventHandler");
                 var deletionEvent = new AssignedTodoItemDeletedEvent(assigneeId);

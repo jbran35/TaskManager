@@ -18,13 +18,13 @@ namespace TaskManager.Application.TodoItems.EventHandlers
         {
             if (notification.OldAssigneeId is not null && notification.OldAssigneeId != Guid.Empty)
             {
-                await _cache.RemoveAsync(CacheKeys.AssignedTodoItems(notification.OldAssigneeId.Value), cancellationToken);
+                await _cache.RemoveAsync(CacheKeys.AssignedTodoItems(notification.OldAssigneeId.Value), CancellationToken.None);
                 await _updateNotificationService.NotifyTodoItemUpdated(notification.OldAssigneeId.Value.ToString());
             }
 
             if(notification.NewAssigneeId is not null && notification.NewAssigneeId != Guid.Empty && notification.NewAssigneeId != notification.OldAssigneeId)
             {
-                await _cache.RemoveAsync(CacheKeys.AssignedTodoItems(notification.NewAssigneeId.Value), cancellationToken);
+                await _cache.RemoveAsync(CacheKeys.AssignedTodoItems(notification.NewAssigneeId.Value), CancellationToken.None);
                 await _updateNotificationService.NotifyTodoItemUpdated(notification.NewAssigneeId.Value.ToString()); 
             }
         }

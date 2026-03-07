@@ -79,8 +79,8 @@ namespace TaskManager.Application.TodoItems.CommandHandlers
                     Console.WriteLine("Notifying Owner");
                     var ownerDetailedViewKey = CacheKeys.ProjectDetailedViews(todoItem.OwnerId, todoItem.ProjectId);
                     var assignedItemsKey = CacheKeys.AssignedTodoItems(user.Id);
-                    await _cache.RemoveAsync(assignedItemsKey);
-                    await _cache.RemoveAsync(ownerDetailedViewKey);
+                    await _cache.RemoveAsync(assignedItemsKey, CancellationToken.None);
+                    await _cache.RemoveAsync(ownerDetailedViewKey, CancellationToken.None);
                     await _updateService.NotifyTodoItemUpdated(todoItem.OwnerId.ToString());
                 }
 
@@ -92,9 +92,9 @@ namespace TaskManager.Application.TodoItems.CommandHandlers
                     var assignedItemsKey = CacheKeys.AssignedTodoItems(todoItem.AssigneeId!.Value);
                     
                     _logger.LogInformation("Clearing owner cache keys");
-                    await _cache.RemoveAsync(detailsKey, cancellationToken);
-                    await _cache.RemoveAsync(tilesKey, cancellationToken);
-                    await _cache.RemoveAsync(assignedItemsKey, cancellationToken); 
+                    await _cache.RemoveAsync(detailsKey, CancellationToken.None);
+                    await _cache.RemoveAsync(tilesKey, CancellationToken.None);
+                    await _cache.RemoveAsync(assignedItemsKey, CancellationToken.None); 
                     await _updateService.NotifyTodoItemUpdated(todoItem.AssigneeId!.Value.ToString());
                 }
 

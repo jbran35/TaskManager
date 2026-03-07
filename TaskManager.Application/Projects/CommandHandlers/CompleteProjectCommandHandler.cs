@@ -69,7 +69,7 @@ namespace TaskManager.Application.Projects.CommandHandlers
                     foreach (var key in assigneeIds)
                     {
                         _logger.LogInformation("Removing: " + key);
-                        await _cache.RemoveAsync(CacheKeys.AssignedTodoItems(key), cancellationToken);
+                        await _cache.RemoveAsync(CacheKeys.AssignedTodoItems(key), CancellationToken.None);
                     }
                 }
 

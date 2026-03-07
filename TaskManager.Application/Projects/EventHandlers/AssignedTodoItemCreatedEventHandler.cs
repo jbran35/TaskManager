@@ -15,7 +15,7 @@ namespace TaskManager.Application.Projects.EventHandlers
         {
             if (notification.AssigneeId is not null && notification.AssigneeId != Guid.Empty)
             {
-                await _cache.RemoveAsync(CacheKeys.AssignedTodoItems(notification.AssigneeId.Value), cancellationToken);
+                await _cache.RemoveAsync(CacheKeys.AssignedTodoItems(notification.AssigneeId.Value), CancellationToken.None);
                 await _updateNotificationService.NotifyTodoItemUpdated(notification.AssigneeId.Value.ToString());
             }
         }

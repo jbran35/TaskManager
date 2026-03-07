@@ -24,8 +24,15 @@ namespace TaskManager.Application.Common
 
                 foreach (var key in cacheInvalidator.Keys)
                 {
-                    _logger.LogInformation("In Handle Method - For Loop. Key: " + key);
-                    await _cache.RemoveAsync(key, cancellationToken); 
+                    try
+                    {
+                        _logger.LogInformation("In Handle Method - For Loop. Key: " + key);
+                        await _cache.RemoveAsync(key, CancellationToken.None);
+                    }
+                    catch(Exception ex)
+                    {
+                        _logger.LogError(ex, "Issue Clearing Assignee's Cached Task List");
+                    }
                 }
             }
 
