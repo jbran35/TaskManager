@@ -11,7 +11,8 @@ using TaskManager.Domain.Interfaces;
 
 namespace TaskManager.Application.Projects.CommandHandlers
 {
-    public class UpdateProjectCommandHandler(IUnitOfWork unitOfWork, UserManager<User> userManager, IDistributedCache cache, ILogger<UpdateProjectCommandHandler> logger) : IRequestHandler<UpdateProjectCommand, Result<ProjectDetailsDto>>
+    public class UpdateProjectCommandHandler(IUnitOfWork unitOfWork, UserManager<User> userManager, IDistributedCache cache, 
+        ILogger<UpdateProjectCommandHandler> logger) : IRequestHandler<UpdateProjectCommand, Result<ProjectDetailsDto>>
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly UserManager<User> _userManager = userManager;

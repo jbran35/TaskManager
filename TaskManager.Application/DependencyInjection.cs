@@ -1,6 +1,5 @@
 ﻿using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using System.Reflection;
 using TaskManager.Application.Common;
 
@@ -16,6 +15,8 @@ namespace TaskManager.Application
                 cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly);
 
                 cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+
+                cfg.AddOpenBehavior(typeof(CacheInvalidatorHandler<,>));
 
             });
 

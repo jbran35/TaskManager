@@ -1,17 +1,18 @@
 ﻿using MediatR;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Logging;
 using TaskManager.Application.Common;
 using TaskManager.Application.Interfaces;
-using TaskManager.Application.Projects.Events;
+using TaskManager.Application.UserConnections.Events;
 
-namespace TaskManager.Application.Projects.EventHandlers
+namespace TaskManager.Application.UserConnections.EventHandlers
 {
-    public class AssignedTodoItemCreatedEventHandler(IDistributedCache cache, ITodoItemUpdateNotificationService updateNotificationService)
-        : INotificationHandler<AssignedTodoItemCreatedEvent>
+    public class UserRemovedFromGroupEventHandler(IDistributedCache cache, ITodoItemUpdateNotificationService updateNotificationService)
+        : INotificationHandler<UserRemovedFromGoupEvent>
     {
-        private readonly IDistributedCache _cache = cache;
+        private readonly IDistributedCache _cache = cache; 
         private readonly ITodoItemUpdateNotificationService _updateNotificationService = updateNotificationService;
-        public async Task Handle(AssignedTodoItemCreatedEvent notification, CancellationToken cancellationToken)
+        public async Task Handle(UserRemovedFromGoupEvent notification, CancellationToken cancellationToken)
         {
             if (notification.AssigneeId is not null && notification.AssigneeId != Guid.Empty)
             {

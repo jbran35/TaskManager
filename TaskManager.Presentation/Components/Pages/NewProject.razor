@@ -67,12 +67,11 @@
     }
 
 
-    public async Task<ProjectTileDto?> CreateProject()
+    public async Task CreateProject()
     {
 
         var isValid = editContext?.Validate() ?? false;
-
-        if (!isValid) return null;
+        if (!isValid) return;
 
         var request = new CreateProjectRequest
         {
@@ -96,13 +95,15 @@
 
         else if (response is not null && response.IsSuccessStatusCode)
         {
-            var successResult = await response.Content.ReadFromJsonAsync<ProjectTileDto>();
+            var result = await response.Content.ReadFromJsonAsync<ProjectDetailsDto>();
 
-            if (successResult is not null)
-                return successResult; 
+            if (result is not null)
+            {
+                ToastService.Notify(new(ToastType.Success, "Project Created Successfully!"));
+                await ProjectStateService.SetProjectBasicDetails(result);
+
+            }
         }
-
-        return null;
     }
 }
 

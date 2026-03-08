@@ -50,13 +50,14 @@ namespace TaskManager.Application.UserConnections.CommandHandlers
                 return Result<UserConnectionDto>.Failure("Error Adding Assignee");
             }
 
-            var connectionDto = new UserConnectionDto(
-                newConnection.Id, 
-                newConnection.UserId, 
-                newConnection.AssigneeId, 
-                assignee.FullName,
-                assignee.Email ?? string.Empty); 
-
+            var connectionDto = new UserConnectionDto
+            {
+                Id = newConnection.Id,
+                UserId = newConnection.UserId,
+                AssigneeId = newConnection.AssigneeId,
+                AssigneeName = assignee.FullName,
+                AssigneeEmail = assignee.Email ?? string.Empty
+            };
 
             return Result<UserConnectionDto>.Success(connectionDto); 
         }

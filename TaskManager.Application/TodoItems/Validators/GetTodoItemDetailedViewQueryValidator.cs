@@ -8,13 +8,19 @@ namespace TaskManager.Application.TodoItems.Validators
         public GetTodoItemDetailedViewQueryValidator()
         {
             RuleFor(x => x.UserId)
+                .NotNull()
                 .NotEmpty()
                 .WithMessage("Your ID Is Required To Get This Task's Details");
 
-            RuleFor(x => x.Id)
+            RuleFor(x => x.TodoItemId)
+                .NotNull()
                 .NotEmpty()
                 .WithMessage("This Project's ID Is Required To Retrieve This Task's Details");
 
+            RuleFor(x => x.ProjectId)
+                .NotNull()
+                .NotEmpty()
+                .WithMessage("ProjectID Required");
         }
     }
 }

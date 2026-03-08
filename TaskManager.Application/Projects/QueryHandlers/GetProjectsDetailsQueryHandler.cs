@@ -18,10 +18,6 @@ namespace TaskManager.Application.Projects.QueryHandlers
         private readonly ILogger<GetProjectsDetailsQueryHandler> _logger = logger;
         public async Task<Result<ProjectDetailsDto>> Handle(GetProjectDetailsQuery request, CancellationToken cancellationToken)
         {
-            //Validate Request
-            if(request is null || request.ProjectId == Guid.Empty || request.UserId == Guid.Empty)
-                return Result<ProjectDetailsDto>.Failure("Invalid Request");
-
             //Check Cache For Project
             _logger.LogInformation("Checking For Project Details In Cache"); 
 
@@ -63,6 +59,31 @@ namespace TaskManager.Application.Projects.QueryHandlers
 
             //Map to Dto and return
             var detailsDto = project.ToProjectDetailsDto();
+
+
+            try
+            {
+                var cacheOptions = new DistributedCacheEntryOptions
+                {
+                    SlidingExpiration = TimeSpan.FromMinutes(20),
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1),
+                };
+
+                var jsonOptions = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+
+                string serializedDto = JsonSerializer.Serialize(detailsDto, jsonOptions);
+                await _cache.SetStringAsync(key, serializedDto, cacheOptions, cancellationToken);
+                _logger.LogInformation("Saving Project Details To Redis");
+            }
+
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Redis Error:");
+            }
+
             return Result<ProjectDetailsDto>.Success(detailsDto!);
 
         }

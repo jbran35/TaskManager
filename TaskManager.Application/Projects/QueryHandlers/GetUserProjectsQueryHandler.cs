@@ -18,11 +18,6 @@ namespace TaskManager.Application.Projects.QueryHandlers
         private readonly ILogger<GetUserProjectsQueryHandler> _logger = logger;
         public async Task<Result<List<ProjectTileDto>>> Handle(GetUserProjectsQuery request, CancellationToken cancellationToken)
         {
-            //Validate Request
-            if (request is null || request.UserId == Guid.Empty)
-                return Result<List<ProjectTileDto>>.Failure("Invalid request");
-
-            //Check Cache
             string key = CacheKeys.ProjectTiles(request.UserId);
 
             try
@@ -47,31 +42,32 @@ namespace TaskManager.Application.Projects.QueryHandlers
 
             _logger.LogInformation("No Project Tiles found in cache. Pulling from the Repository...");
 
-            //Validate tiles list
             var readOnlyList = await unitOfWork.ProjectRepository
                 .GetAllProjectsByOwnerIdAsync(request.UserId, cancellationToken);
 
-            var projectTiles = readOnlyList.Cast<ProjectTileDto>().ToList(); 
+            if (readOnlyList is null)
+                return Result<List<ProjectTileDto>>.Failure("Issue Retrieving Projects");
 
-            if (projectTiles is null)
-                return Result<List<ProjectTileDto>>.Failure("Issue Loading Projects");
+            var projectTiles = readOnlyList.ToProjectTileDtoList();
+            //var projectTiles = readOnlyList.Cast<ProjectTileDto>().ToList(); 
 
-
-            //var tileDtos = projectTiles.ToProjectTileDtoList();
-
-            //Save to cache
             try
             {
                 _logger.LogInformation("Saving Project Tiles to Cache");
 
-                var options = new DistributedCacheEntryOptions
+                var cacheOptions = new DistributedCacheEntryOptions
                 {
                     SlidingExpiration = TimeSpan.FromMinutes(20),
                     AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1)
                 };
 
-                string projectTilesJson = JsonSerializer.Serialize(projectTiles);
-                await _cache.SetStringAsync(key, projectTilesJson, options, cancellationToken);
+                var jsonOptions = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+
+                string projectTilesJson = JsonSerializer.Serialize(projectTiles, jsonOptions);
+                await _cache.SetStringAsync(key, projectTilesJson, cacheOptions, cancellationToken);
             }
 
             catch (Exception ex)

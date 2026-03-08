@@ -56,7 +56,7 @@
                 @foreach (var assignee in assignees)
                 {
                     <option value="@assignee.AssigneeId">
-                        @assignee.AssigneeFullName - @assignee.AssigneeEmail
+                        @assignee.AssigneeName - @assignee.AssigneeEmail
                     </option>
                 }
             </select>
@@ -103,8 +103,6 @@
     public Domain.Enums.Priority[] priorityOptions = Enum.GetValues<Domain.Enums.Priority>();
     public TodoItemModel Model { get; set; } = new TodoItemModel();
     public List<UserConnectionDto> assignees { get; set; } = new List<UserConnectionDto>();
-    // private NewAssigneeModal newAssigneeModal = default!;
-
 
     protected async override Task OnInitializedAsync()
     {
@@ -124,8 +122,6 @@
             if (result is not null)
                 assignees = result;
         }
-
-        //StateHasChanged();
     }
 
     public async Task OnShowNewAssigneeModal()
@@ -142,7 +138,7 @@
         await OnShowNewAssigneeModalClick.InvokeAsync();
     }
 
-    public async Task CreateTask()
+    public async Task CreateTodoItem()
     {
         //Name, ProjectId, ProjectName, Description, AssigneeId, Status, Priority, DueDate
         var isValid = editContext?.Validate() ?? false;
@@ -163,7 +159,6 @@
 
 
         var client = ApiClientService.GetClient();
-
         var response = await client.PostAsJsonAsync("api/Projects/" + ProjectId + "/tasks", request);
 
         if (response is null)
@@ -179,11 +174,7 @@
         }
 
         var result = await response.Content.ReadFromJsonAsync<TodoItemEntry>();
-
-        if(result is null)
-        {
-            return;
-        }
+        if(result is null) return;
 
         ToastService.Notify(new(ToastType.Success, "Task Created Successfully!"));
         await ProjectStateService.SetTodoItemInProject(ProjectId, result);

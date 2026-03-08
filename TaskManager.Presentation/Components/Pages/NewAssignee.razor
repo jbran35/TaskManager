@@ -12,9 +12,9 @@
                class="form-control"
                placeholder="johndoe@gmail.com"
                @bind="email"
-               disabled = "@disabled"/>
+               disabled="@AssigneeFound" />
 
-    <Button Color="ButtonColor.Dark" @onclick="SearchForUser" Disabled="@disabled"><Icon Name="IconName.Search" /></Button>
+        <Button Color="ButtonColor.Dark" @onclick="SearchForUser" Disabled="@AssigneeFound"><Icon Name="IconName.Search" /></Button>
 
     </div>
 </div>
@@ -23,7 +23,7 @@
     [Inject] protected ToastService ToastService { get; set; } = default!;
 
     // private bool userFound = false;
-    private bool disabled = false;
+    private bool AssigneeFound = false;
     private string firstName = string.Empty;
     private string lastName = string.Empty;
     private string email = string.Empty;
@@ -54,7 +54,6 @@
         }
 
         var result = await response.Content.ReadFromJsonAsync<GetUserResponse>();
-
         if(result is null)
         {
             ToastService.Notify(new(ToastType.Danger, "Unexpected Error Adding Assignee To Your Group"));
@@ -66,7 +65,7 @@
         email = result.Email;
         AssigneeId = result.Id;
 
-        disabled = true;
+        AssigneeFound = true;
         ToastService.Notify(new(ToastType.Success, "User Found!"));
 
         return;

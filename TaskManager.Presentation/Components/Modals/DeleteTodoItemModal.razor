@@ -8,7 +8,7 @@
 
 <Modal @ref="deleteModal" Title=Delete>
     <BodyTemplate>
-        <DeleteTask></DeleteTask>
+        <DeleteTodoItem></DeleteTodoItem>
     </BodyTemplate>
     <FooterTemplate>
         <Button Color="ButtonColor.Secondary" @onclick="OnHideDeleteModalClick">Cancel</Button>
@@ -18,10 +18,9 @@
 
 @code {
     [Inject] protected ToastService ToastService { get; set; } = default!;
-    [Parameter] public EventCallback OnTodoItemDeleted { get; set; }
     [Parameter] public Guid TodoItemId { get; set; }
     [Parameter] public Guid ProjectId { get; set; }
-   // [Parameter] public Guid AssigneeId { get; set; }
+    // [Parameter] public Guid AssigneeId { get; set; }
 
     private bool IsDeleteClicked = false; 
     private Modal deleteModal = default!;
@@ -48,16 +47,24 @@
         var response = await client.DeleteAsync($"api/todoitems/{TodoItemId}");
 
         if (response is null)
+        {
             ToastService.Notify(new(ToastType.Danger, "Unexpected Error Deleting Task"));
+            return;
+        }
 
-        else if(!response.IsSuccessStatusCode)
+        if(!response.IsSuccessStatusCode)
+        {
             ToastService.Notify(new(ToastType.Danger, await response.Content.ReadAsStringAsync()));
+            return;
+        }
 
-        else if(response.IsSuccessStatusCode)
+        if(response.IsSuccessStatusCode)
+        {
+            ToastService.Notify(new(ToastType.Success, "Task Deleted Successfully!"));
             await ProjectStateService.RemoveTodoItem(ProjectId, TodoItemId);
+            await deleteModal.HideAsync();
+        }
 
         IsDeleteClicked = false; 
-        await deleteModal.HideAsync();
-        await OnTodoItemDeleted.InvokeAsync();
     }
 }

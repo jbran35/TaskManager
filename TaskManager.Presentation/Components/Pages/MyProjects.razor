@@ -12,15 +12,14 @@
 @using TaskManager.Presentation.Services
 @using System.Linq
 
-
 @inject ApiClientService ApiClientService
 @inject NavigationManager NavManager
 @inject ProjectStateService ProjectStateService
 @inject ProjectSortStateService ProjectSortStateService
 @inject AuthenticationStateProvider AuthenticationProvider
 
+@implements IDisposable
 
-@* @rendermode InteractiveServer *@
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 <PageTitle>My Projects</PageTitle>
@@ -46,8 +45,6 @@
         </DropdownMenu>
     </Dropdown>
 
-    @* <Button Type="ButtonType.Button" @onclick="OpenAddProjectModal"> *@
-    @* </Button> *@
     <input type="search"
            class="form-control flex-grow-1"
            placeholder="Filter projects..."
@@ -60,7 +57,7 @@
     </Button>
 </div>
 
-<AddProjectModal @ref="addModal" OnProjectCreated="AddProjectTile"></AddProjectModal>
+<AddProjectModal @ref="addModal"></AddProjectModal>
 
 
 @code{
@@ -117,11 +114,10 @@ else
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 px-2">
             @foreach (var proj in FilteredProjects)
             {
+                //OnProjectUpdated = "ReloadProjectTile"
                 <div class="col">
                     <ProjectTile project="proj"
-                                    OnProjectUpdated="ReloadProjectTile"
-                                    OnProjectDeleted="DeleteProjectTile"
-                                    OnProjectCompleted="ReloadCompletedProjectTile">
+                        OnProjectCompleted="ReloadCompletedProjectTile">
                     </ProjectTile>
                 </div>
             }
@@ -153,12 +149,12 @@ else
         if (response is not null && projectsList is not null)
         {
             ToastService.Notify(new(ToastType.Success,"Project Created Successfully"));
-           // await ProjectStateService.SetProjectTile(response);
+            // await ProjectStateService.SetProjectTile(response);
 
             projectsList.Add(response);
             projects = projectsList.AsQueryable();
 
-           // StateHasChanged();
+            // StateHasChanged();
         }
 
         else 
@@ -166,47 +162,6 @@ else
             ToastService.Notify(new(ToastType.Danger, "Error Creating Project"));
         }
     }
-
-
-    private async Task DeleteProjectTile(Application.Projects.DTOs.ProjectTileDto result)
-    {
-        //Only runs If (response is not null && result is not null && response.IsSuccessStatusCode)
-        //So we can assume that the action was successful if we made it here.
-
-        if (result is not null && result.Id != Guid.Empty)
-        {
-           // await ProjectStateService.RemoveProject(result.Id);
-            //ToastService.Notify(new(ToastType.Success, "Project Deleted Successfully!"));
-
-            if (projectsList is not null)
-            {
-                projectsList.RemoveAll(p => p.Id == result.Id);
-                projects = projectsList.AsQueryable();
-                StateHasChanged(); 
-            }
-        }
-    }
-
-    private async Task ReloadProjectTile(ProjectDetailsDto updatedProject)
-    {
-        if (updatedProject is null) return;
-
-        var updatedProjTile = await ProjectStateService.GetProjectTile(updatedProject.Id);
-
-        if (projectsList is not null && updatedProjTile is not null)
-        {
-            var index = projectsList.FindIndex(p => p.Id == updatedProjTile.Id);
-
-            if (index != -1)
-            {
-                projectsList[index] = updatedProjTile;
-                projects = projectsList.AsQueryable();
-                StateHasChanged();
-            }
-        }
-    }
-
-
 
     private async Task ReloadCompletedProjectTile(CompleteProjectResponse response)
     {
@@ -236,63 +191,57 @@ else
     private string projectFilter = string.Empty;
     PaginationState pagination = new PaginationState { ItemsPerPage = 5 };
     private IQueryable<Application.Projects.DTOs.ProjectTileDto>? projects;
-    private List<Application.Projects.DTOs.ProjectTileDto>? projectsList = new(); 
+    private List<ProjectTileDto>? projectsList = new(); 
     private bool isLoading = true;
     private string Message = string.Empty;
     private bool hasLoaded = false;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    // protected override async Task OnAfterRenderAsync(bool firstRender)
 
+    // {
+    //     var authState = await AuthenticationProvider.GetAuthenticationStateAsync();
+    //     if (authState.User.Identity?.IsAuthenticated == true)
+    //     {
+    //         try
+    //         {
+    //             await LoadProjects();
+    //         }
+    //         catch (Exception ex)
+    //         {
+    //             Console.WriteLine("error: " + ex.Message);
+    //         }
+    //     }
+
+    //     if (firstRender)
+    //     {
+    //         StateHasChanged();
+    //     }
+    // }
+
+
+    protected override async Task OnInitializedAsync()
     {
+        Console.WriteLine("In MyProjects OnInitializedAsync");
+        ProjectStateService.OnChange += RefreshState;
+
+
         var authState = await AuthenticationProvider.GetAuthenticationStateAsync();
         if (authState.User.Identity?.IsAuthenticated == true)
         {
             await LoadProjects();
         }
 
-        try
-        {
-
-            await LoadProjects();
-            // var sortOption = ProjectSortStateService.GetSortingMethod();
-
-            // if (sortOption is not null)
-            // {
-            //     Console.WriteLine("\n PULLING SORT FROM CACHE \n");
-            //     UpdateSort(sortOption ?? SortOption.DateDesc);
-            // }
-        }
-
-        catch (Exception ex)
-        {
-            Console.WriteLine("error: " + ex.Message);
-        }
-
-        StateHasChanged();
-
-    }
-
-
-    protected override async Task OnInitializedAsync()
-    {
-
-        // var authState = await AuthenticationProvider.GetAuthenticationStateAsync();
-        // if (authState.User.Identity?.IsAuthenticated == true)
-        // {
-        //     await LoadProjects();
-        // }
-
         // try
         // {
 
         //     await LoadProjects();
-            // var sortOption = ProjectSortStateService.GetSortingMethod();
+        // var sortOption = ProjectSortStateService.GetSortingMethod();
 
-            // if (sortOption is not null)
-            // {
-            //     Console.WriteLine("\n PULLING SORT FROM CACHE \n");
-            //     UpdateSort(sortOption ?? SortOption.DateDesc);
-            // }
+        // if (sortOption is not null)
+        // {
+        //     Console.WriteLine("\n PULLING SORT FROM CACHE \n");
+        //     UpdateSort(sortOption ?? SortOption.DateDesc);
+        // }
         // }
 
         // catch (Exception ex)
@@ -301,23 +250,40 @@ else
         // }
     }
 
+    public async void RefreshState()
+    {
+        await InvokeAsync(async () =>
+        {
+            var projectTiles = await ProjectStateService.GetUserProjectTiles(); 
+
+            if (projectTiles is not null)
+            {
+                projectsList = projectTiles; 
+                projects = projectsList.AsQueryable();
+
+                StateHasChanged();
+            }
+        });
+    }
+
+
+    public void Dispose()
+    {
+        ProjectStateService.OnChange -= RefreshState;
+    }
+
     private async Task LoadProjects()
     {
         if(hasLoaded) return;
-
         hasLoaded = true;
 
-
-        Console.WriteLine("\n IN LOAD PROJECTS \n");
-        errorMessage = string.Empty;
+        Console.WriteLine("\n In LoadProjects() \n");
 
         //Load Projects from cache
         var projTiles = await ProjectStateService.GetUserProjectTiles();
 
-        //If projects in cache - load tiles
         if (projTiles is not null && projTiles.Any() && projectsList is not null)
         {
-            //Continue to load projects from cache as normal and add to projectsList/projects for display
             Console.WriteLine("\n Loading projects from Cache... \n");
             foreach(var tile in projTiles)
             {
@@ -333,78 +299,76 @@ else
         // Add to ProjectsList and Projects IQueryable for display.
         try
         {
-            // PreloadService.Show(SpinnerColor.Dark, "Loading projects...");
             Console.WriteLine("\n Loading projects from API... \n");
 
             var client = ApiClientService.GetClient();
-
             var response = await client.GetAsync("api/projects/MyProjects");
 
+            Console.WriteLine("Back from API Call");
             if (response is null)
             {
-                //ToastService.Notify(new(ToastType.Danger, "Unexpected Error Retrieving Projects"));
+                Console.WriteLine("In null block");
+                ToastService.Notify(new(ToastType.Danger, "Unexpected Error Retrieving Projects"));
                 return;
             }
 
-            //If query was successfull - put project tiles in ProjectsList and set as queryable.
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine("In unsuccessful block");
+                var errorMessage = await response.Content.ReadAsStringAsync();
+                Console.WriteLine("Error: " + errorMessage);
+                ToastService.Notify(new(ToastType.Danger, errorMessage));
+                return;
+            }
+
             if (response.IsSuccessStatusCode)
             {
-                var result = await response.Content.ReadFromJsonAsync<List<Application.Projects.DTOs.ProjectTileDto>>();
+                Console.WriteLine("In success block");
+                var result = await response.Content.ReadFromJsonAsync<List<ProjectTileDto>>();
 
                 if (result is not null)
                 {
-                    //ToastService.Notify(new(ToastType.Success, "Welcome!"));
-
-                    // ProjectStateService.SetProjectTilesInCache(result.UserProjectTiles);
+                    ToastService.Notify(new(ToastType.Success, "Welcome!"));
 
                     await ProjectStateService.SetProjectTiles(result);
 
-
-                    projTiles = await ProjectStateService.GetUserProjectTiles();
-
-                    Console.WriteLine("In LoadProjects, after loading from API:");
-
                     projectsList = result;
-
                     projects = projectsList.AsQueryable();
-                    }
-
-
-                    else
-                    {
-                        errorMessage = await response.Content.ReadAsStringAsync();
-                        //ToastService.Notify(new(ToastType.Danger, errorMessage));
-                    }
                 }
 
-                //If unauthorized attempt to load projects
-                else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                {
-                    errorMessage = "Not authorized. Please log in.";
-                    //ToastService.Notify(new(ToastType.Danger, errorMessage));
-                    await InvokeAsync(() => NavManager.NavigateTo("/login"));
-                    return;
-                }
-
-                //General error
                 else
                 {
-                    errorMessage = $"API returned status code: {response.StatusCode}";
+                    errorMessage = await response.Content.ReadAsStringAsync();
                     //ToastService.Notify(new(ToastType.Danger, errorMessage));
                 }
             }
 
-            catch (Exception ex)
+            //If unauthorized attempt to load projects
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
-                errorMessage = $"Error: {ex.Message}";
+                errorMessage = "Not authorized. Please log in.";
+                //ToastService.Notify(new(ToastType.Danger, errorMessage));
+                await InvokeAsync(() => NavManager.NavigateTo("/login"));
+                return;
+            }
+
+            //General error
+            else
+            {
+                errorMessage = $"API returned status code: {response.StatusCode}";
                 //ToastService.Notify(new(ToastType.Danger, errorMessage));
             }
+        }
 
-            finally
-            {
-                isLoading = false;
-            }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+            //ToastService.Notify(new(ToastType.Danger, errorMessage));
+        }
 
-        
+        finally
+        {
+            isLoading = false;
+        }
     }
 }

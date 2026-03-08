@@ -140,7 +140,6 @@ else if (!string.IsNullOrEmpty(errorMessage))
             <PropertyColumn Property="@(t => t.Title)" Title="Task Name" Sortable="true" Align="Align.Left" />
             <PropertyColumn Property="@(t => t.Priority)" Title="Priority" Sortable="true" Align="Align.Center" />
             <PropertyColumn Property="@(t => t.AssigneeName)" Title="Assignee" Sortable="true" Align="Align.Center" />
-
             <TemplateColumn Title="Due Date" Sortable="true" Context="task">
                 @if (task.DueDate.HasValue)
                 {
@@ -174,7 +173,6 @@ else if (!string.IsNullOrEmpty(errorMessage))
     @if (tasks is null || !tasks.Any())
     {
         <p style="text-align: center">No Tasks Found.</p>
-
     }
     </div>
 
@@ -184,6 +182,30 @@ else if (!string.IsNullOrEmpty(errorMessage))
 
     [Inject] protected ToastService ToastService { get; set; } = default!;
     private ProgressGraph progressGraph = default!;
+    private Func<Task>? _reopenPreviousModal;
+
+    private async Task OnAssigneeModalClosed()
+    {
+        if (_reopenPreviousModal is not null)
+        {
+            await _reopenPreviousModal.Invoke();
+            _reopenPreviousModal = null;
+        }
+    }
+
+    private async Task OpenNewAssigneeModalFromAdd()
+    {
+        await addTodoItemModal.OnHideAddTaskModalClick(); 
+        _reopenPreviousModal = async () => await addTodoItemModal.RestoreModal();
+        await newAssigneeModal.OnShowNewAssigneeModal();
+    }
+
+    private async Task OpenNewAssigneeModalFromEdit()
+    {
+        await editTodoItemModal.OnHideEditModalClick();
+        _reopenPreviousModal = async () => await editTodoItemModal.RestoreModal();
+        await newAssigneeModal.OnShowNewAssigneeModal();
+    }
 
     private void RecalculateProgress()
     {
@@ -207,12 +229,12 @@ else if (!string.IsNullOrEmpty(errorMessage))
 }
                                                 @*MODALS*@
 
-    <DeleteTodoItemModal @ref="deleteTodoModal" OnTodoItemDeleted="DeleteTodoItemEntry" ProjectId="ProjectId"> </DeleteTodoItemModal>
+    <AddTodoItemModal @ref="addTodoItemModal" ProjectId="ProjectId" OnShowNewAssigneeModalClick="OpenNewAssigneeModalFromAdd"> </AddTodoItemModal>
+    <DeleteTodoItemModal @ref="deleteTodoModal" ProjectId="ProjectId"> </DeleteTodoItemModal>
+    <EditTodoItemModal @ref="editTodoItemModal" ProjectId="ProjectId" OnShowNewAssigneeModalClick="OpenNewAssigneeModalFromEdit"> </EditTodoItemModal>
     <TodoItemDetailsModal @ref="detailsModal" OnEditClick="OnEditFromDetailsClick" isOwner="true"> </TodoItemDetailsModal>
-    <EditTodoItemModal @ref="editTodoItemModal" ProjectId="ProjectId" OnTodoItemUpdated="OnUpdateTodoItemClick" OnShowNewAssigneeModalClick="OnShowAssigneeModal"> </EditTodoItemModal>
-    <NewAssigneeModal @ref="newAssigneeModal" OnCanceled="OnNewAssigneeCanceled" OnAssigneeSaved="OnAssigneeSaved"> </NewAssigneeModal>
-    <AddTodoItemModal @ref="addTodoItemModal" ProjectId="ProjectId" OnTodoItemCreated="OnTodoItemCreated" OnShowNewAssigneeModalClick="OnShowAssigneeModal"> </AddTodoItemModal>
-    <EditProjectModal @ref="editProjectModal" ProjectId="ProjectId" OnProjectUpdated="OnProjectUpdated"></EditProjectModal>
+    <NewAssigneeModal @ref="newAssigneeModal" OnCanceled="OnAssigneeModalClosed" OnAssigneeSaved="OnAssigneeModalClosed"> </NewAssigneeModal>
+    <EditProjectModal @ref="editProjectModal" ProjectId="ProjectId"></EditProjectModal>
 
     @code{
 
@@ -225,58 +247,40 @@ else if (!string.IsNullOrEmpty(errorMessage))
 
     private TodoItemModel model { get; set;} = new TodoItemModel(); 
 
-    private async Task OnProjectUpdated(ProjectDetailsDto response)
-    {
-
-        if(response is not null)
-        {
-            projectName = response.Title;
-            projectDescription = response.Description ?? string.Empty;
-
-            var newCachedDetails = new ProjectDetailsDto
-            {
-                Id = ProjectId,
-                Title = projectName,
-                Description = projectDescription,
-            };
-            //await ProjectStateService.SetProjectBasicDetails(newCachedDetails);
-        }
-    }
-
     private async Task OnShowEditProjectModalClick()
     {
         await editProjectModal.OnShowEditProjectModalClick();
     }
 
     //Runs when the user saves the new assignee/user connection
-    private async Task OnAssigneeSaved(NewAssigneeCallingOriginEnum origin)
-    {
-        if (origin == NewAssigneeCallingOriginEnum.AddTodoItem)
-            await addTodoItemModal.RestoreAddTodoItemModal();
+    // private async Task OnAssigneeSaved(NewAssigneeCallingOriginEnum origin)
+    // {
+    //     if (origin == NewAssigneeCallingOriginEnum.AddTodoItem)
+    //         await addTodoItemModal.RestoreModal();
 
-        if (origin == NewAssigneeCallingOriginEnum.EditTodoItem)
-            await editTodoItemModal.RestoreEditTodoItemModal();
-    }
+    //     if (origin == NewAssigneeCallingOriginEnum.EditTodoItem)
+    //         await editTodoItemModal.RestoreModal();
+    // }
 
-    private async Task OnNewAssigneeCanceled(NewAssigneeCallingOriginEnum origin)
-    {
-        if(origin == NewAssigneeCallingOriginEnum.AddTodoItem)
-            await addTodoItemModal.RestoreAddTodoItemModal();
+    // private async Task OnNewAssigneeCanceled(NewAssigneeCallingOriginEnum origin)
+    // {
+    //     if(origin == NewAssigneeCallingOriginEnum.AddTodoItem)
+    //         await addTodoItemModal.RestoreModal();
 
-        if (origin == NewAssigneeCallingOriginEnum.EditTodoItem)
-            await editTodoItemModal.RestoreEditTodoItemModal();
-    }
+    //     if (origin == NewAssigneeCallingOriginEnum.EditTodoItem)
+    //         await editTodoItemModal.RestoreModal();
+    // }
 
-    private async Task OnShowAssigneeModal(NewAssigneeCallingOriginEnum origin)
-    {
-        if (origin == NewAssigneeCallingOriginEnum.AddTodoItem)
-            await addTodoItemModal.OnHideAddTaskModalClick();
+    // private async Task OnShowAssigneeModal(NewAssigneeCallingOriginEnum origin)
+    // {
+    //     if (origin == NewAssigneeCallingOriginEnum.AddTodoItem)
+    //         await addTodoItemModal.OnHideAddTaskModalClick();
 
-        if (origin == NewAssigneeCallingOriginEnum.EditTodoItem)
-            await editTodoItemModal.OnHideEditModalClick();
+    //     if (origin == NewAssigneeCallingOriginEnum.EditTodoItem)
+    //         await editTodoItemModal.OnHideEditModalClick();
 
-        await newAssigneeModal.OnShowNewAssigneeModal(origin);
-    }
+    //     await newAssigneeModal.OnShowNewAssigneeModal(origin);
+    // }
 
     private async Task OnShowEditModalClick(TodoItemEntry todoItem)
     {
@@ -289,29 +293,9 @@ else if (!string.IsNullOrEmpty(errorMessage))
 
     }
 
-    private async Task OnUpdateTodoItemClick()
-    {
-        taskList = await ProjectStateService.GetProjectTodoItems(ProjectId);
-
-        if (taskList is not null)
-            tasks = taskList.AsQueryable();
-
-        RecalculateProgress();
-    }
-
     private async Task OnAddTaskModalClick()
     {
         await addTodoItemModal.OnAddTaskModalClick(ProjectId);
-    }
-
-    private async Task OnTodoItemCreated()
-    {
-        taskList = await ProjectStateService.GetProjectTodoItems(ProjectId);
-
-        if (taskList is not null)
-            tasks = taskList.AsQueryable();
-
-        RecalculateProgress();
     }
 
     private async Task RefreshFromCache()
@@ -330,18 +314,6 @@ else if (!string.IsNullOrEmpty(errorMessage))
     private async Task OnShowDeleteModalClick(TodoItemEntry todoItem)
     {
         await deleteTodoModal.OnShowDeleteModalClick(todoItem);
-    }
-
-    private async Task DeleteTodoItemEntry()
-    {
-        if (taskList is not null)
-        {
-            taskList = await ProjectStateService.GetProjectTodoItems(ProjectId);
-            if(taskList is not null)
-                tasks = taskList.AsQueryable();
-
-            RecalculateProgress();
-        }
     }
 
     private async Task OnGoHomeClick()
@@ -375,9 +347,25 @@ else if (!string.IsNullOrEmpty(errorMessage))
     protected override async Task OnInitializedAsync()
     {
         SignalRConnectionService.OnTaskUpdated += HandleStateChanged;
+        ProjectStateService.OnChange += RefreshState;
+
         await SignalRConnectionService.InitializeConnection();
         await LoadProject();
         RecalculateProgress(); 
+    }
+
+    public async void RefreshState()
+    {
+        await InvokeAsync(async () =>
+        {
+            var project = await ProjectStateService.GetProjectDetails(ProjectId);
+
+            if (project is not null)
+            {
+                RefreshProjectDetails(project);
+                StateHasChanged();
+            }
+        });
     }
 
     private void HandleStateChanged()
@@ -395,6 +383,7 @@ else if (!string.IsNullOrEmpty(errorMessage))
     public void Dispose()
     {
         SignalRConnectionService.OnTaskUpdated -= HandleStateChanged;
+        ProjectStateService.OnChange -= RefreshState;
     }
 
     private async Task UpdateTodoItemStatus (Guid todoItemId)
@@ -403,7 +392,7 @@ else if (!string.IsNullOrEmpty(errorMessage))
         var response = await client.PatchAsync($"api/todoitems/UpdateStatus/{todoItemId}", null);
 
         if (!response.IsSuccessStatusCode) return;
-
+        
         var result = await response.Content.ReadFromJsonAsync<TodoItemEntry>();
 
         if (result is not null)
@@ -428,7 +417,6 @@ else if (!string.IsNullOrEmpty(errorMessage))
                 ? Math.Round((double)completeTasks / totalTasks * 100, 2)
                 : 0;
 
-            //Id, Title, ProjectTitle, AssigneeName, OwnerName, Priority, DueDate, CreatedOn, Status
             taskList = new List<TodoItemEntry>(newDetails.TodoItems
                 .Select(t => new TodoItemEntry
                 {
@@ -468,7 +456,6 @@ else if (!string.IsNullOrEmpty(errorMessage))
             if (response is not null && response.IsSuccessStatusCode)
             {
                 var projectDetails = await response.Content.ReadFromJsonAsync<ProjectDetailedViewDto>();
-
                 if (projectDetails is not null)
                 {
                     RefreshProjectDetails(projectDetails);

@@ -49,10 +49,9 @@
 
 @code {
     [Inject] protected ToastService ToastService { get; set; } = default!;
-
     [Parameter] public Guid ProjectId{ get; set; }
-    private ProjectFormModel updatedProject = new();
 
+    private ProjectFormModel updatedProject = new();
     private ProjectFormModel model = new();
     private EditContext? editContext;
 
@@ -64,10 +63,10 @@
     }
 
 
-    protected override Task OnInitializedAsync()
+    protected async override Task OnInitializedAsync()
     {
         editContext = new EditContext(model);
-        return base.OnInitializedAsync();
+        //return base.OnInitializedAsync(); - was used when method didn't have async
     }
 
     protected override async Task OnParametersSetAsync()
@@ -78,7 +77,6 @@
     public async Task LoadProject()
     {
         var cachedDetails = await ProjectStateService.GetProjectBasicDetails(ProjectId);
-
 
         if (cachedDetails is not null && cachedDetails.Title is not null && cachedDetails.Description is not null)
         {
@@ -96,7 +94,7 @@
 
             if (result is not null)
             {
-                await ProjectStateService.SetProjectBasicDetails(result); 
+                await ProjectStateService.SetProjectBasicDetails(result);
 
                 model.Title = result.Title.ToString();
 
@@ -109,10 +107,10 @@
         else return;
     }
 
-    public async Task<ProjectDetailsDto?> UpdateProject()
+    public async Task UpdateProject()
     {
         var isValid = editContext?.Validate() ?? false;
-        if (!isValid) return null;
+        if (!isValid) return;
 
         var request = new UpdateProjectRequest
         {
@@ -126,29 +124,23 @@
         if (response is null)
         {
             ToastService.Notify(new(ToastType.Danger, "Unexpected Error Editing Project"));
+            return;
         }
 
-        else if (response is not null && !response.IsSuccessStatusCode)
+        if (!response.IsSuccessStatusCode)
         {
-            var errorResult = await response.Content.ReadAsStringAsync();
-            ToastService.Notify(new(ToastType.Danger, errorResult));
+            ToastService.Notify(new(ToastType.Danger, await response.Content.ReadAsStringAsync()));
+            return;
         }
 
-        else if (response is not null && response.IsSuccessStatusCode)
+        if (response.IsSuccessStatusCode)
         {
-            var successResult = await response.Content.ReadFromJsonAsync<ProjectDetailsDto>();
+            var result = await response.Content.ReadFromJsonAsync<ProjectDetailsDto>();
 
-            if (successResult is not null)
-            {
-                await ProjectStateService.ClearProjectDetails(successResult.Id);
-                await ProjectStateService.ClearProjectTiles();
-                
-                ToastService.Notify(new(ToastType.Success, "Project Updated Successfully!"));
+            if (result is not null)
+                await ProjectStateService.SetProjectBasicDetails(result);
 
-                return successResult;
-            }
+            ToastService.Notify(new(ToastType.Success, "Project Updated Successfully!"));
         }
-
-        return null;
     }
 }

@@ -39,9 +39,9 @@
     </div>
 </Card>
 
-<EditProjectModal @ref="editModal" projectId="@Project.Id" OnProjectUpdated="ReloadTile"> </EditProjectModal>
+<EditProjectModal @ref="editModal" projectId="@Project.Id"> </EditProjectModal>
 
-<DeleteProjectModal @ref="deleteModal" ProjectId="@Project.Id" OnProjectDeleted="DeleteTile"></DeleteProjectModal>
+<DeleteProjectModal @ref="deleteModal" ProjectId="@Project.Id" ></DeleteProjectModal>
 
 <CompleteProjectModal @ref="completeModal" ProjectId="@Project.Id" OnProjectCompleted="CompleteTile"> </CompleteProjectModal>
 
@@ -50,8 +50,6 @@
 @code {
 
     [Parameter] public required ProjectTileDto Project { get; set; }
-    [Parameter] public EventCallback<ProjectDetailsDto> OnProjectUpdated { get; set; }
-    [Parameter] public EventCallback<ProjectTileDto> OnProjectDeleted { get; set; }
     [Parameter] public EventCallback<CompleteProjectResponse> OnProjectCompleted { get; set; }
 
     private Dropdown dropdownElement = default!;
@@ -81,9 +79,7 @@
     {
         if(completedProj is not null)
         {
-
             await OnProjectCompleted.InvokeAsync(completedProj);
-
         }
     }
 
@@ -106,19 +102,7 @@
             return Math.Round((double)Project.CompleteTodoItemCount / Project.TotalTodoItemCount * 100, 2);
         }
     }
-
-    private async Task ReloadTile(ProjectDetailsDto updatedProj)
-    {
-        Project.Title = "That shit's crazy bruh";
-        //await OnProjectUpdated.InvokeAsync(updatedProj);
-    }
-
-    private async Task DeleteTile()
-    {
-        await OnProjectDeleted.InvokeAsync(Project);
-    }
-
-
+    
 
     //Show Methods For Modals
     private async Task OnShowEditProjectModalClick()

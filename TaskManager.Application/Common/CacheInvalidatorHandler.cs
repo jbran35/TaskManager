@@ -14,6 +14,7 @@ namespace TaskManager.Application.Common
         private readonly ILogger<CacheInvalidatorHandler<TRequest, TResponse>> _logger = logger; 
         public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
         {
+            Console.WriteLine("\n \n WE ARE IN THE CACHEINVALIDATOR \n \n");
             _logger.LogInformation("In Handle Method"); 
             var response = await next();
 
@@ -27,7 +28,7 @@ namespace TaskManager.Application.Common
                     try
                     {
                         _logger.LogInformation("In Handle Method - For Loop. Key: " + key);
-                        await _cache.RemoveAsync(key, CancellationToken.None);
+                        await _cache.RemoveAsync(key, cancellationToken);
                     }
                     catch(Exception ex)
                     {

@@ -18,10 +18,6 @@ namespace TaskManager.Application.Projects.QueryHandlers
         private readonly ILogger<GetProjectDetailedViewQueryHandler> _logger = logger;
         public async Task<Result<ProjectDetailedViewDto>> Handle(GetProjectDetailedViewQuery request, CancellationToken cancellationToken)
         {
-            //Validate Request
-            if (request is null || request.ProjectId == Guid.Empty || request.UserId == Guid.Empty)
-                return Result<ProjectDetailedViewDto>.Failure("Invalid Request");
-
             //Check Cache
             string key = CacheKeys.ProjectDetailedViews(request.UserId, request.ProjectId);
 
@@ -59,16 +55,21 @@ namespace TaskManager.Application.Projects.QueryHandlers
 
             try
             {
-                var options = new DistributedCacheEntryOptions
+                var cacheOptions = new DistributedCacheEntryOptions
                 {
                     SlidingExpiration = TimeSpan.FromMinutes(20),
                     AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1)
                 };
 
+                var jsonOptions = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+
                 _logger.LogInformation("Saving Project Details To Redis");
 
-                string serializedDto = JsonSerializer.Serialize(projectDetailedViewDto);
-                await _cache.SetStringAsync(key, serializedDto, options, cancellationToken);
+                string serializedDto = JsonSerializer.Serialize(projectDetailedViewDto, jsonOptions);
+                await _cache.SetStringAsync(key, serializedDto, cacheOptions, cancellationToken);
 
             }
 

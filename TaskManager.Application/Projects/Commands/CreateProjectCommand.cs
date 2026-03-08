@@ -9,7 +9,7 @@ namespace TaskManager.Application.Projects.Commands
     public record CreateProjectCommand(
         Guid UserId,
         string? Title,
-        string? Description) : IRequest<Result<ProjectTileDto>>, ICacheInvalidator
+        string? Description) : IRequest<Result<ProjectDetailsDto>>, ICacheInvalidator
     {
         public string[] Keys => [CacheKeys.ProjectTiles(UserId)];
     }

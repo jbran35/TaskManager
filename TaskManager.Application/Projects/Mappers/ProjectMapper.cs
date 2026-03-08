@@ -8,6 +8,50 @@ namespace TaskManager.Application.Projects.Mappers
     public static class ProjectMapper
     {
 
+        public static ProjectDetailedViewDto? ToProjectDetailedView (this ProjectDetailsDto details)
+        {
+            if (details is null) return null;
+
+            return new ProjectDetailedViewDto { 
+                
+                Id = details.Id,
+                Title = details.Title,
+                Description = details.Description,
+                CreatedOn = details.CreatedOn,
+            };
+        }
+
+        public static ProjectTileDto? ToProjectTileDto (this ProjectDetailsDto details) {
+        
+            if (details is null) return null;
+
+            return new ProjectTileDto
+            {
+                Id = details.Id,
+                Title = details.Title,
+                Description = details.Description,
+                CreatedOn = details.CreatedOn,
+            };
+        }
+
+        public static ProjectTileDto? ToProjectTileDto (this ProjectDetailedViewDto project)
+        {
+            if (project is null) return null;
+
+            return new ProjectTileDto
+            {
+                Id = project.Id, 
+                OwnerId = project.OwnerId, 
+                Title = project.Title,
+                Description = project.Description, 
+                TotalTodoItemCount = project.TotalTodoItemCount, 
+                CompleteTodoItemCount = project.CompleteTodoItemCount, 
+                CreatedOn = project.CreatedOn, 
+                Status = project.Status
+            };
+        }
+
+
         public static List<ProjectTileDto>? ToProjectTileDtoList(this IEnumerable<IProjectTile> tiles)
         {
             if (tiles is null) return null;
@@ -70,7 +114,7 @@ namespace TaskManager.Application.Projects.Mappers
             }; 
 
 
-            if (project.TodoItems is null || !project.TodoItems.Any())
+            if (project.TodoItems is null || project.TodoItems.Count == 0)
             {
                 return detailedDto; 
             }
@@ -94,7 +138,7 @@ namespace TaskManager.Application.Projects.Mappers
             return detailedDto; 
         }
 
-public static ProjectDetailsDto? ToProjectDetailsDto(this Project project)
+        public static ProjectDetailsDto? ToProjectDetailsDto(this Project project)
         {
             if (project is null) return null;
 

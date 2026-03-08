@@ -44,11 +44,11 @@ builder.Services.AddIdentity<User, IdentityRole<Guid>>()
     .AddSignInManager<SignInManager<User>>();
 ;
 
-builder.Services.AddMediatR(cfg => {
-    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
+//builder.Services.AddMediatR(cfg => {
+//    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
 
-    cfg.AddOpenBehavior(typeof(CacheInvalidatorHandler<,>));
-});
+//    cfg.AddOpenBehavior(typeof(CacheInvalidatorHandler<,>));
+//});
 
 
 //Register Services

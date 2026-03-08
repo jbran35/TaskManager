@@ -95,7 +95,7 @@ else
             <PropertyColumn Property="@(t => t.Title)" Title="Task Name" Sortable="true" Align="Align.Center" />
             <PropertyColumn Property="@(t => t.ProjectTitle)" Title="Project" Sortable="true" Align="Align.Center" />
             <PropertyColumn Property="@(t => t.OwnerName)" Title="Assigner" Sortable="true" Align="Align.Center" />
-
+            <PropertyColumn Property="@(t => t.Priority)" Title="Priority" Sortable="true" Align="Align.Center" />
             <TemplateColumn Title="Due Date" Sortable="true" Context="task" Align="Align.Center">
                 @if (task.DueDate.HasValue)
                 {
@@ -129,9 +129,9 @@ else
     <Paginator State="pagination" />
     
     <TodoItemDetailsModal @ref="detailsModal" isOwner="false"> </TodoItemDetailsModal>
-    <div class="alert @(SignalRConnectionService.IsConnected ? "alert-success" : "alert-danger")">
+    @* <div class="alert @(SignalRConnectionService.IsConnected ? "alert-success" : "alert-danger")">
         SignalR Status: @SignalRConnectionService.HubState
-    </div>
+    </div> *@
 }
 
 @code {

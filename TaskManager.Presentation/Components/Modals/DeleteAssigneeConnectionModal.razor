@@ -1,9 +1,12 @@
 ﻿@using BlazorBootstrap
-@* Delete Assignee Connection Modal *@
+@using TaskManager.Application.UserConnections.DTOs
+@using TaskManager.Presentation.Services
+@inject ApiClientService ApiClientService
+@inject AssigneeListStateService AssigneeListStateService
 
 <Modal @ref="deleteAssigneeModal" Title="Delete Assignee">
     <BodyTemplate>
-        <p>Are you sure you want to remove <b> @AssigneeName </b> from your group?</p>
+        <p>Are you sure you want to remove <b> @Connection.AssigneeName </b> from your group?</p>
     </BodyTemplate>
     <FooterTemplate>
         <Button Color="ButtonColor.Secondary" @onclick="OnHideDeleteAssigneeModal">Cancel</Button>
@@ -14,11 +17,10 @@
 
 @code {
 
-    [Parameter] public string AssigneeName { get; set; } = string.Empty;
-    [Parameter] public EventCallback DeleteAssignee { get; set; }
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+    [Parameter] public required UserConnectionDto Connection { get; set; }
 
     public Modal deleteAssigneeModal = default!;
-
     private bool IsDeleteClicked = false;
 
     public async Task ShowAsync()
@@ -26,20 +28,33 @@
         await deleteAssigneeModal.ShowAsync();
     }
 
-
     public void OnHideDeleteAssigneeModal()
     {
         deleteAssigneeModal.HideAsync();
     }
 
-    private void OnDeleteAssignee()
+    private async Task OnDeleteAssignee()
     {
         IsDeleteClicked = true;
-        deleteAssigneeModal.HideAsync();
-        DeleteAssignee.InvokeAsync();
+
+        var client = ApiClientService.GetClient();
+        var response = await client.DeleteAsync("api/Account/assignees/" + Connection.Id);
+
+        if (response is null)
+        {
+            ToastService.Notify(new(ToastType.Danger, "Unexpected Error Removing User From Your Group"));
+            return;
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            ToastService.Notify(new(ToastType.Danger, await response.Content.ReadAsStringAsync()));
+            return;
+        }
+
+        ToastService.Notify(new(ToastType.Success, "User Removed From Your Group!"));
+        await AssigneeListStateService.RemoveFromCacheAsync(Connection); 
+        await deleteAssigneeModal.HideAsync();
         IsDeleteClicked = false;
-
     }
-
-    
 }

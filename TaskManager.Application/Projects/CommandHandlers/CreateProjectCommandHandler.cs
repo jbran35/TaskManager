@@ -12,45 +12,43 @@ namespace TaskManager.Application.Projects.CommandHandlers
 {
     public class CreateProjectCommandHandler(
         IUnitOfWork unitOfWork, UserManager<User> userManager, 
-        ILogger<CreateProjectCommandHandler> logger) : IRequestHandler<CreateProjectCommand, Result<ProjectTileDto>>
+        ILogger<CreateProjectCommandHandler> logger) : IRequestHandler<CreateProjectCommand, Result<ProjectDetailsDto>>
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly UserManager<User> _userManager = userManager;
         private readonly ILogger<CreateProjectCommandHandler> _logger = logger;
-        public async Task<Result<ProjectTileDto>> Handle(CreateProjectCommand request, CancellationToken cancellationToken)
+        public async Task<Result<ProjectDetailsDto>> Handle(CreateProjectCommand request, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Handling Command");
             if (request is null || request.UserId == Guid.Empty || string.IsNullOrWhiteSpace(request.Title))
-                return Result<ProjectTileDto>.Failure("Invalid request.");
+                return Result<ProjectDetailsDto>.Failure("Invalid request.");
 
             var user = await _userManager.FindByIdAsync(request.UserId.ToString());
             if (user is null)
-                return Result<ProjectTileDto>.Failure("User not found.");
+                return Result<ProjectDetailsDto>.Failure("User not found.");
 
             var projectTitleResult = Title.Create(request.Title);
 
             if (projectTitleResult.IsFailure)
-                return Result<ProjectTileDto>.Failure(projectTitleResult.ErrorMessage ?? "Invalid project title.");
+                return Result<ProjectDetailsDto>.Failure(projectTitleResult.ErrorMessage ?? "Invalid project title.");
 
             var projectDescriptionResult = Description.Create(request.Description!);
 
             if (projectDescriptionResult.IsFailure)
-                return Result<ProjectTileDto>.Failure(projectDescriptionResult.ErrorMessage ?? "Invalid project description.");
+                return Result<ProjectDetailsDto>.Failure(projectDescriptionResult.ErrorMessage ?? "Invalid project description.");
 
             _logger.LogInformation("Creating Project");
 
             var projectResult = Project.Create(projectTitleResult.Value, projectDescriptionResult.Value, request.UserId);
 
             if (projectResult.IsFailure)
-                return Result<ProjectTileDto>.Failure(projectResult.ErrorMessage ?? "Failed to create project.");
+                return Result<ProjectDetailsDto>.Failure(projectResult.ErrorMessage ?? "Failed to create project.");
 
-            var projectTileDto = new ProjectTileDto
+            var projectDetails = new ProjectDetailsDto
             {
                 Id = projectResult.Value.Id,
                 Title = projectResult.Value.Title,
                 Description = projectResult.Value.Description,
-                TotalTodoItemCount = projectResult.Value.TodoItems.Count,
-                CompleteTodoItemCount = projectResult.Value.TodoItems.Where(t => t.Status == Domain.Enums.Status.Complete).Count(),
                 CreatedOn = projectResult.Value.CreatedOn,
             };
 
@@ -60,13 +58,13 @@ namespace TaskManager.Application.Projects.CommandHandlers
                 _logger.LogInformation("Saving Project To Db");
                 _unitOfWork.ProjectRepository.Add(projectResult.Value);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
-                return Result<ProjectTileDto>.Success(projectTileDto); 
+                return Result<ProjectDetailsDto>.Success(projectDetails); 
             }
 
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Issue Creating Project");
-                return Result<ProjectTileDto>.Failure("An error occurred while saving the project.");
+                return Result<ProjectDetailsDto>.Failure("An error occurred while saving the project.");
             }
         }
     }

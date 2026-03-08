@@ -14,7 +14,7 @@
             <CardBody Class="d-flex flex-column align-items-center justify-content-center"> 
 
             <Icon Name="IconName.Person" Size="IconSize.x1" />
-            <p class="mb-0 fw-bold">@Connection.AssigneeFullName</p>
+            <p class="mb-0 fw-bold">@Connection.AssigneeName</p>
             <p class="mb-0 text-muted"> @Connection.AssigneeEmail </p>
                 
             <div class="position-absolute top-0 end-0 m-2">
@@ -27,50 +27,13 @@
     </Card>
 
 <DeleteAssigneeConnectionModal @ref="deleteAssigneeModal" 
-                               AssigneeName="@($"{Connection.AssigneeFullName}")" 
-                               DeleteAssignee="DeleteAssigneeAsync" />
+                               Connection="Connection"/>
 
 @code {
     [Inject] protected ToastService ToastService { get; set; } = default!;
-
-
-    [Parameter] public EventCallback<UserConnectionDto> OnDeleted { get; set; }
     [Parameter] public required UserConnectionDto Connection { get; init; } 
 
     private DeleteAssigneeConnectionModal deleteAssigneeModal = default!;
-
-    private async Task DeleteAssigneeAsync()
-    {
-        Console.WriteLine("In DeleteAssigneeAsync: " + Connection.AssigneeId);
-
-        var request = new DeleteUserConnectionRequest
-            {
-                Id = Connection.AssigneeId
-            };
-
-        var client = ApiClientService.GetClient();
-        var response = await client.DeleteAsync($"api/Account/assignees/" + Connection.Id);
-
-        // deleteAssigneeModal.OnHideDeleteAssigneeModal();
-        if (response is null)
-        {
-            ToastService.Notify(new(ToastType.Danger, "Unexpected Error Removing User From Your Group"));
-            return; 
-        }
-
-        else if (!response.IsSuccessStatusCode)
-        {
-            ToastService.Notify(new(ToastType.Danger, await response.Content.ReadAsStringAsync()));
-            return;
-        }
-
-
-        if(response.IsSuccessStatusCode)
-        {
-            Console.WriteLine("Assignee deleted successfully");
-            await OnDeleted.InvokeAsync(Connection);
-        }
-    }
 
     private async Task OnShowDeleteAssigneeModal()
     {

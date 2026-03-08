@@ -8,9 +8,9 @@
 
 <Modal @ref="addTaskModal" Title="Add Task" Size="ModalSize.Large">
     <BodyTemplate>
-        <NewTask @ref="_addTaskForm" ProjectId="ProjectId" 
+        <NewTodoItem @ref="_addTaskForm" ProjectId="ProjectId" 
                  OnShowNewAssigneeModalClick="OnShowNewAssigneeModal"
-                 OnRestoreNewTodoItemModal="RestoreAddTodoItemModal"></NewTask>
+                 OnRestoreNewTodoItemModal="RestoreModal"></NewTodoItem>
     </BodyTemplate>
     <FooterTemplate>
         <Button Color="ButtonColor.Secondary" @onclick="OnHideAddTaskModalClick">Cancel</Button>
@@ -23,11 +23,10 @@
     private Modal addTaskModal = default!;
 
     [Parameter] public Guid ProjectId { get; set; }
-    [Parameter] public EventCallback OnTodoItemCreated { get; set; }
     [Parameter] public EventCallback<NewAssigneeCallingOriginEnum> OnShowNewAssigneeModalClick { get; set; }
 
     Button SaveButton = default!; 
-    private NewTask _addTaskForm;
+    private NewTodoItem _addTaskForm;
     TodoItemModel model = new TodoItemModel();
     private bool IsSaveClicked = false; 
 
@@ -46,12 +45,9 @@
     private async Task OnCreateTaskClick()
     {
         IsSaveClicked = true;
-        await _addTaskForm.CreateTask();
-
+        await _addTaskForm.CreateTodoItem();
         await addTaskModal.HideAsync();
         IsSaveClicked = false;
-        await OnTodoItemCreated.InvokeAsync();
-
     }
 
     public async Task OnShowNewAssigneeModal()
@@ -61,7 +57,7 @@
         await addTaskModal.HideAsync();
     }
 
-    public async Task RestoreAddTodoItemModal()
+    public async Task RestoreModal()
     {
         await addTaskModal.ShowAsync();
         _addTaskForm.RestoreForm(); 

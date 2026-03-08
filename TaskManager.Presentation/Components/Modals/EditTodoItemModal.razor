@@ -10,10 +10,10 @@
 
 <Modal @ref="editModal" Title="Edit Task" Size="ModalSize.Large">
     <BodyTemplate>
-        <EditTask TodoItem="@TodoItem" @ref="_editTaskForm" 
+        <EditTodoItem TodoItem="@TodoItem" @ref="_editTodoItemForm" 
                   OnShowNewAssigneeModalClick="OnShowNewAssigneeModal"
-                  OnRestoreEditTodoItemModal="RestoreEditTodoItemModal"
-                  ProjectId="ProjectId"> </EditTask>
+                  OnRestoreEditTodoItemModal="RestoreModal"
+                  ProjectId="ProjectId"> </EditTodoItem>
     </BodyTemplate>
     <FooterTemplate>
         <Button Color="ButtonColor.Secondary" @onclick="OnHideEditModalClick">Close</Button>
@@ -23,20 +23,17 @@
 
 @code {
     [Parameter] public Guid ProjectId { get; set; }
-    [Parameter] public EventCallback<UpdateTodoItemResponse> OnTodoItemUpdated { get; set; }
     [Parameter] public EventCallback OnRestoreEditModalClick { get; set; }
     [Parameter] public EventCallback<NewAssigneeCallingOriginEnum> OnShowNewAssigneeModalClick { get; set; }
 
     private string todoName = string.Empty;
     private Modal editModal = default!;
-    private EditTask _editTaskForm = default!;
+    private EditTodoItem _editTodoItemForm = default!;
     private Guid editModalGuid = Guid.Empty;
     private bool IsUpdateClicked = false;
     private TodoItemEntry TodoItem {get; set;}
 
     public TodoItemModel model = new TodoItemModel();
-
-
 
     public async Task OnShowEditModalClick(TodoItemEntry todoItem)
     {
@@ -55,21 +52,10 @@
 
     private async Task OnUpdateTaskModalClick()
     {
-
-        //  IsSaveClicked = true;
-        // await _addTaskForm.CreateTask();
-
-        // await addTaskModal.HideAsync();
-        // IsSaveClicked = false;
-        // await OnTodoItemCreated.InvokeAsync();
-
-
         IsUpdateClicked = true;
-        await _editTaskForm.UpdateTask();
+        await _editTodoItemForm.UpdateTodoItem();
         await editModal.HideAsync();
         IsUpdateClicked = false;
-
-        await OnTodoItemUpdated.InvokeAsync();
     }
 
     public async Task OnShowNewAssigneeModal(TodoItemModel passedModel)
@@ -80,9 +66,9 @@
         await editModal.HideAsync();
     }
 
-    public async Task RestoreEditTodoItemModal()
+    public async Task RestoreModal()
     {
-        // await editModal.ShowAsync();
-        // _editTaskForm.RestoreForm(model, assigneeId);
+        await editModal.ShowAsync();
+        _editTodoItemForm.RestoreForm();
     }
 }

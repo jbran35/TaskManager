@@ -32,6 +32,7 @@ namespace TaskManager.API.Controllers
         [HttpDelete("assignees/{connectionId}")]
         public async Task<ActionResult<DeleteAssigneeResponse>> DeleteAssigneeAsync([FromRoute] Guid connectionId)
         {
+            Console.WriteLine("\n MADE IT TO DELETE ASSIGNEE ENDPOING \n");
             //Validate user is authenticated and get user id from claims
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 

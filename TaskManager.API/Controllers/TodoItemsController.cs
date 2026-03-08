@@ -97,7 +97,7 @@ namespace TaskManager.API.Controllers
 
         //Endpoint to get detailed view of a task when clicked on the ProjectDetailedViews page
         [HttpGet("{todoItemId}")]
-        public async Task<ActionResult<TodoItemEntry>> GetTodoItemDetailedView([FromRoute] Guid todoItemId)
+        public async Task<ActionResult<TodoItemEntry>> GetTodoItemDetailedView([FromBody] GetTodoItemDetailedViewQuery query)
         {
             //Validate user identity
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -106,7 +106,8 @@ namespace TaskManager.API.Controllers
                 return Unauthorized(new { Message = "User ID not found in token" });
 
             var userId = Guid.Parse(userIdString);
-            var query = new GetTodoItemDetailedViewQuery(todoItemId, userId);
+            query.UserId = userId; 
+
             var result = await _mediator.Send(query);
 
             return result.IsSuccess ? Ok(result.Value) : BadRequest(result.ErrorMessage);

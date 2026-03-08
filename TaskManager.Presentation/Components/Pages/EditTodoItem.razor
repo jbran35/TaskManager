@@ -4,8 +4,6 @@
 @inject TodoItemDraftStateService TodoItemDraftStateService
 @inject SignalRConnectionService SignalRConnectionService
 
-@* @inject AssigneeListStateService AssigneeListStateService *@
-
 @page "/project/task/{TaskId:guid}"
 @using BlazorBootstrap
 @using System.ComponentModel.DataAnnotations
@@ -55,7 +53,7 @@
                 @foreach (var assignee in Assignees)
                 {
                     <option value="@assignee.AssigneeId">
-                        @assignee.AssigneeFullName - @assignee.AssigneeEmail
+                        @assignee.AssigneeName - @assignee.AssigneeEmail
                     </option>
                 }
             </select>
@@ -130,7 +128,7 @@
 
         if(TodoItem is null)
         {
-            await LoadTask();
+            await LoadTodoItem();
         }
     }
 
@@ -161,7 +159,7 @@
         await OnShowNewAssigneeModalClick.InvokeAsync(Model);
     }
 
-    public async Task LoadTask()
+    public async Task LoadTodoItem()
     {
         var cachedDetails = await ProjectStateService.GetTodoItem(ProjectId, TodoItem.Id);
 
@@ -189,15 +187,12 @@
         try
         {
             var client = ApiClientService.GetClient();
-
             var response = await client.GetFromJsonAsync<GetTodoItemDetailedViewResponse>($"api/todoitems/{TodoItem.Id}");
 
             if (response is null || response.TodoItemDetails is null)
-            {
                 return;
-            }
 
-            var task = response.TodoItemDetails;
+            var todoItem = response.TodoItemDetails;
         }
 
         catch (Exception ex)
@@ -206,7 +201,7 @@
         }
     }
 
-    public async Task UpdateTask()
+    public async Task UpdateTodoItem()
     {
         var isValid = editContext?.Validate() ?? false;
         if (!isValid) return;
@@ -223,8 +218,8 @@
             Priority = validationModel.Priority,
             DueDate = validationModel.DueDate
         };
-        var client = ApiClientService.GetClient();
 
+        var client = ApiClientService.GetClient();
         var response = await client.PatchAsJsonAsync("api/todoItems/" + TodoItem.Id.ToString(), request);
 
         if (response is null)
@@ -233,18 +228,16 @@
             return;
         }
 
-        else if (!response.IsSuccessStatusCode)
+        if (!response.IsSuccessStatusCode)
         {
             ToastService.Notify(new(ToastType.Danger, await response.Content.ReadAsStringAsync()));
             return;
         }
 
         var result = await response.Content.ReadFromJsonAsync<TodoItemEntry>();
-
         if (result is not null)
         {
             await ProjectStateService.SetTodoItemInProject(ProjectId, result);
-            var updatedItem = await ProjectStateService.GetTodoItem(ProjectId, result.Id);
             ToastService.Notify(new(ToastType.Success, "Task Updated Successfully!"));
         }
     }

@@ -43,6 +43,26 @@ namespace TaskManager.Infrastructure.Repositories
                 .ToListAsync(cancellationToken);
         }
 
+        public async Task<List<Guid>> GetMyTodoItemsAssignedToUser(Guid userId, Guid assigneeId, CancellationToken cancellationToken)
+        {
+            return await _context.TodoItems
+                .Where(t => t.AssigneeId == assigneeId && t.OwnerId == userId && t.Status != Status.Deleted) 
+                .Select(t => t.Id)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task UnassignTasksByIdAsync(List<Guid> todoItemIds, CancellationToken cancellationToken)
+        {
+            if (todoItemIds is null || todoItemIds.Count == 0) return;
+
+            var todoItems = await _context.TodoItems.Where(t => todoItemIds.Contains(t.Id)).ToListAsync(cancellationToken);
+
+            foreach (var todoItem in todoItems)
+            {
+                todoItem.AssigneeId = null;
+            }
+        }
+
         public async Task<TodoItem?> GetTodoItemByIdAsync(Guid todoId, CancellationToken cancellationToken)
         {
             return await _context.TodoItems

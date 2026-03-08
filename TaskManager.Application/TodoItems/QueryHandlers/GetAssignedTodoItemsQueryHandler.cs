@@ -1,8 +1,8 @@
 ﻿using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
+using TaskManager.Application.Common;
 using TaskManager.Application.TodoItems.DTOs;
 using TaskManager.Application.TodoItems.Queries;
 using TaskManager.Domain.Common;
@@ -17,11 +17,8 @@ namespace TaskManager.Application.TodoItems.QueryHandlers
 
         public async Task<Result<List<TodoItemEntry>>> Handle(GetAssignedTodoItemsQuery request, CancellationToken cancellationToken)
         {
-            //Validate Request
-            if (request is null || request.UserId == Guid.Empty)
-                return Result<List<TodoItemEntry>>.Failure("Invalid Request");
 
-            string key = $"assigned_todo_items:{request.UserId}";
+            string key = CacheKeys.AssignedTodoItems(request.UserId);
 
             try
             {
@@ -41,28 +38,25 @@ namespace TaskManager.Application.TodoItems.QueryHandlers
 
             _logger.LogInformation("Getting Assigned Items From Database");
 
-            //Get & Validate Items
             var readOnlyList = await _unitOfWork.TodoItemRepository.GetMyAssignedTodoItemsAsync(request.UserId, cancellationToken); 
 
             var assignedItems = readOnlyList.Cast<TodoItemEntry>().ToList();
 
-            if (assignedItems is null)
-                return Result<List<TodoItemEntry>>.Failure("Issue Retrieving Tasks");
-            
-            if (!assignedItems.Any())
-                return Result<List<TodoItemEntry>>.Success([]);
-
             try
             {
-                var options = new DistributedCacheEntryOptions
+                var cacheOptions = new DistributedCacheEntryOptions
                 {
                     SlidingExpiration = TimeSpan.FromMinutes(20),
-                    AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1)
-
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1),
                 };
 
-                string serializedList = JsonSerializer.Serialize(assignedItems);
-                await _cache.SetStringAsync(key, serializedList, options, cancellationToken);
+                var jsonOptions = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+
+                string serializedList = JsonSerializer.Serialize(assignedItems, jsonOptions);
+                await _cache.SetStringAsync(key, serializedList, cacheOptions, cancellationToken);
                 _logger.LogInformation("Saving Assinged Items To Redis");
             }
 

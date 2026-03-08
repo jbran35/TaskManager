@@ -13,5 +13,8 @@
 
         public static string AssignedTodoItems(Guid userId)
          => $"assigned_todo_items:{userId}";
+
+        public static string Connections(Guid userId)
+            => $"connections:{userId}";
     }
 }

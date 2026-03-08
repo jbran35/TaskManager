@@ -88,12 +88,10 @@ namespace TaskManager.Application.TodoItems.CommandHandlers
                 if (hasAssignee && userIsOwner)
                 {
                     var detailsKey = CacheKeys.ProjectDetailedViews(user.Id, todoItem.ProjectId);
-                    var tilesKey = CacheKeys.ProjectTiles(user.Id);
                     var assignedItemsKey = CacheKeys.AssignedTodoItems(todoItem.AssigneeId!.Value);
                     
                     _logger.LogInformation("Clearing owner cache keys");
                     await _cache.RemoveAsync(detailsKey, CancellationToken.None);
-                    await _cache.RemoveAsync(tilesKey, CancellationToken.None);
                     await _cache.RemoveAsync(assignedItemsKey, CancellationToken.None); 
                     await _updateService.NotifyTodoItemUpdated(todoItem.AssigneeId!.Value.ToString());
                 }

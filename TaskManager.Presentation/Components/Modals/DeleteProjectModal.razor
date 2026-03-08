@@ -24,7 +24,7 @@
     [Inject] protected ToastService ToastService { get; set; } = default!;
 
     [Parameter] public Guid ProjectId { get; set; }
-    [Parameter] public EventCallback OnProjectDeleted { get; set; }
+    // [Parameter] public EventCallback OnSuccessfulDelete { get; set; }
 
     public bool IsDeleteClicked = false; 
 
@@ -50,24 +50,27 @@
         var response = await client.DeleteAsync($"api/projects/{ProjectId}");
         var result = await response.Content.ReadFromJsonAsync<DeleteProjectResponse>(); 
 
-        if (response is not null && result is not null && response.IsSuccessStatusCode)
+        if (response is null)
         {
-            await ProjectStateService.RemoveProject(result.ProjectId);
-            await OnProjectDeleted.InvokeAsync(result);
+            ToastService.Notify(new(ToastType.Danger, "Unexpected Error Deleting Project"));
+            return;
         }
-        else if (response is not null && !response.IsSuccessStatusCode)
+
+        if (!response.IsSuccessStatusCode || result is null)
         {
             ToastService.Notify(new(ToastType.Danger, await response.Content.ReadAsStringAsync()));
+            return;
         }
-        else
-            ToastService.Notify(new(ToastType.Danger, "An Unexpected Error Occurred Deleting This Project"));
 
-        await ProjectStateService.RemoveProject(ProjectId); 
-        ToastService.Notify(new(ToastType.Success, "Project Deleted Successfully!"));
+        if (response.IsSuccessStatusCode)
+        {
+            await ProjectStateService.RemoveProject(result.ProjectId);
+            // await OnSuccessfulDelete.InvokeAsync();
+            ToastService.Notify(new(ToastType.Success, "Project Deleted Successfully!"));
+            await deleteProjectModal.HideAsync();
+        }
 
         IsDeleteClicked = false; 
-        await deleteProjectModal.HideAsync();
-
     }
 }
 

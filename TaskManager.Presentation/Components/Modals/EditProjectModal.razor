@@ -21,14 +21,17 @@
 @code {
     [Parameter] public required Guid ProjectId { get; set; }
 
-    [Parameter] public EventCallback<ProjectDetailsDto> OnProjectUpdated { get; set; }
-
     private bool IsUpdateClicked = false;
     public EditProject _editProjectForm;
 
     private Modal editProjectModal = default!;
 
     //Edit Project Modal Methods
+
+    public async Task OnSavedSuccessfully()
+    {
+        await editProjectModal.HideAsync();
+    }
 
     public async Task OnShowEditProjectModalClick()
     {
@@ -45,14 +48,8 @@
     private async Task OnUpdateProjectClick()
     {
         IsUpdateClicked = true; 
-        var response = await _editProjectForm.UpdateProject(); 
-
-        //Response will only not be null if the action was successful
-        if(response is not null)
-        {  
-            await editProjectModal.HideAsync();
-            await OnProjectUpdated.InvokeAsync(response);
-        }
+        await _editProjectForm.UpdateProject(); 
         IsUpdateClicked = false;
+        await editProjectModal.HideAsync(); 
     }
 }

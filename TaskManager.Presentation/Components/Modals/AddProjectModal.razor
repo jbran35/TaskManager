@@ -24,7 +24,6 @@
 @code{
     [Inject] protected ToastService ToastService { get; set; } = default!;
 
-
     [Parameter] public EventCallback<ProjectTileDto> OnProjectCreated { get; set; }
 
     private bool CreateButtonClicked = false; 
@@ -45,16 +44,8 @@
     private async Task OnCreateProjectClick()
     {
         CreateButtonClicked = true;
-        var response = await _addProjectForm.CreateProject();
-
+        await _addProjectForm.CreateProject();
         await addProjectModal.HideAsync();
-        CreateButtonClicked = false; 
-
-        if (response is not null)
-        {
-            await OnProjectCreated.InvokeAsync(response);
-        }
+        CreateButtonClicked = false;
     }
-
-
 }

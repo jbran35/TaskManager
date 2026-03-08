@@ -3,6 +3,7 @@
 @using BlazorBootstrap
 @using TaskManager.Application.DTOs
 @using TaskManager.Application.TodoItems.DTOs
+@using TaskManager.Application.TodoItems.Queries
 @using TaskManager.Domain.Enums
 @using TaskManager.Presentation.Services
 @rendermode InteractiveServer
@@ -66,24 +67,16 @@
 
     [Parameter] public Guid ProjectId { get; set; }
 
-    public string Title { get; set; } = string.Empty;
+    private string Title { get; set; } = string.Empty;
+    private string? Description { get; set; } = string.Empty;
+    private string? Assignee { get; set; } = string.Empty;
+    private DateTime? DueDate { get; set; }
+    private Status Status { get; set; }
+    private string ProjectName { get; set; } = string.Empty;
+    private Domain.Enums.Priority? Priority { get; set; }
+    private string Message { get; set; } = string.Empty;
 
-    public string? Description { get; set; } = string.Empty;
-
-    public string? Assignee { get; set; } = string.Empty;
-
-    public DateTime? DueDate { get; set; }
-
-    public Status Status { get; set; }
-
-    public string ProjectName { get; set; } = string.Empty;
-
-    public Domain.Enums.Priority? Priority { get; set; }
-
-    public string Message { get; set; } = string.Empty;
-
-    //private bool addAssigneeDisabled = true;
-
+    //private GetTodoItemDetailedViewQuery query = new GetTodoItemDetailedViewQuery(); 
 
     protected override async Task OnInitializedAsync()
     {
@@ -94,15 +87,19 @@
         Priority = TodoItem.Priority; 
     }
 
+    //Not currently used (TodoItemEntry can reasonably contain all needed info), but if the TodoItem Entity is
+    //expanded to include more data than is reasonable to load in TodoItemEntry, the GetTodoItemDetailedView endpoint 
+    //& GetTodoItemDetailedView Query can be used for retrieval.
     @* private async Task LoadTask()
     {
         try
         {
-            //TaskId, Name, ProjectId, ProjectName, Description, AssigneeId, AssigneeName, DueDate, Status, Priority
-            Console.WriteLine("Passing this ID: " + TodoItemId);
+
+           query.ProjectId = ProjectId; 
+           query.TodoItemId = TodoItem.Id;
 
             var client = ApiClientService.GetClient(); 
-            var response = await client.GetAsync($"api/todoitems/{TodoItemId}");
+            var response = await client.GetAsync($"api/todoitems/{TodoItemId}", query);
 
             if(response is null)
             {
@@ -114,7 +111,7 @@
                 ToastService.Notify(new(ToastType.Danger, await response.Content.ReadAsStringAsync()));
 
 
-            var task = await response.Content.ReadFromJsonAsync<TodoItemEntry>();
+            var task = await response.Content.ReadFromJsonAsync<TodoItemDetailedViewDto>();
 
             if (task is null)
                 return;
@@ -126,6 +123,8 @@
             DueDate = task.DueDate;
             Status = task.Status;
             Priority = task.Priority;
+            .... // Added properties here
+
             StateHasChanged();
 
         }catch (Exception ex)

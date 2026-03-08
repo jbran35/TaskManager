@@ -30,6 +30,19 @@ namespace TaskManager.Domain.Interfaces
         /// </returns>
         Task<IReadOnlyList<ITodoItemEntry>> GetMyAssignedTodoItemsAsync(Guid userId, CancellationToken cancellationToken);
 
+        /// <summary>
+        ///     Retrieves a list of todo items owned by a user that are assigned to another user. 
+        ///     Used to unassign todo items assigned to the assignee, when the todo item owner removes them from 
+        ///     their group. 
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="assigneeId"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        Task<List<Guid>> GetMyTodoItemsAssignedToUser(Guid userId, Guid assigneeId, CancellationToken cancellationToken);
+
+
+        Task UnassignTasksByIdAsync(List<Guid> todoItemIds, CancellationToken cancellationToken);
 
         /// <summary>
         ///     Gets the todo item by its Id.

@@ -13,36 +13,37 @@
 
 <Modal @ref="newAssigneeModal" Title="New Assignee">
     <BodyTemplate>
-        <NewAssignee @ref="_newAssigneeForm"> </NewAssignee>
+        <p>Email:</p>
+        <div>
+            <div class="d-flex mb-3 gap-2">
+                <input type="text"
+                       class="form-control"
+                       placeholder="johndoe@gmail.com"
+                       @bind="email"
+                       disabled="@AssigneeFound" />
+
+                <Button Color="ButtonColor.Dark" @onclick="SearchForUser" Disabled="@AssigneeFound"><Icon Name="IconName.Search" /></Button>
+
+            </div>
+        </div>
     </BodyTemplate>
     <FooterTemplate>
         <Button Color="ButtonColor.Secondary" @onclick="OnCancelClick">Close</Button>
-        <Button Color="ButtonColor.Dark" @onclick="OnSaveAssigneeModalClick" Disabled="IsAddClicked">Add</Button>
+        <Button Color="ButtonColor.Dark" @onclick="OnSaveAssigneeModalClick" Disabled="@(!AssigneeFound)">Add</Button>
     </FooterTemplate>
 </Modal>
 
 @code{
     [Inject] protected ToastService ToastService { get; set; } = default!;
 
-    [Parameter] public EventCallback<NewAssigneeCallingOriginEnum> OnAssigneeSaved { get; set; }
-    [Parameter] public EventCallback<NewAssigneeCallingOriginEnum> OnCanceled { get; set; }
+    [Parameter] public EventCallback OnAssigneeSaved { get; set; }
+    [Parameter] public EventCallback OnCanceled { get; set; }
 
-    private string message = string.Empty; 
-    private Modal newAssigneeModal = default!; 
-    private NewAssignee _newAssigneeForm = default!;
-    private bool IsAddClicked = false;
-    private string assignee = string.Empty;
+    private Modal newAssigneeModal = default!;
 
-    //Used to help discern how to restore the parent modal, depending on whether it is the add or edit modal. 
-    NewAssigneeCallingOriginEnum origin;
-
-
-    public async Task OnShowNewAssigneeModal(NewAssigneeCallingOriginEnum origin)
-    {
-        this.origin = origin;
-        await newAssigneeModal.ShowAsync();
-
-    }
+    private bool AssigneeFound = false;
+    private string email = string.Empty;
+    private Guid AssigneeId { get; set; } = Guid.Empty;
 
     public async Task OnShowNewAssigneeModal()
     {
@@ -52,27 +53,61 @@
     public async Task OnCancelClick()
     {
         await newAssigneeModal.HideAsync();
-        await OnCanceled.InvokeAsync(origin);
+        await OnCanceled.InvokeAsync();
     }
 
-    public async Task OnHideNewAssigneeModal()
+    public async Task SearchForUser()
     {
-        await newAssigneeModal.HideAsync(); 
-    }
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            ToastService.Notify(new(ToastType.Danger, "Please Enter An Email"));
+            return;
+        }
 
+        var client = ApiClientService.GetClient();
+        var response = await client.GetAsync($"api/Account/Search/{email}");
+
+        if (response is null)
+        {
+            ToastService.Notify(new(ToastType.Danger, "Unexpected Error Adding Assignee To Your Group"));
+            return;
+        }
+
+        else if (!response.IsSuccessStatusCode)
+        {
+            var errorMessage = await response.Content.ReadAsStringAsync();
+            ToastService.Notify(new(ToastType.Danger, errorMessage));
+            return;
+        }
+
+        var result = await response.Content.ReadFromJsonAsync<GetUserResponse>();
+        if (result is null)
+        {
+            ToastService.Notify(new(ToastType.Danger, "Unexpected Error Adding Assignee To Your Group"));
+            return;
+        }
+
+        email = result.Email;
+        AssigneeId = result.Id;
+        AssigneeFound = true;
+
+        ToastService.Notify(new(ToastType.Success, "User Found!"));
+    }
 
     public async void OnSaveAssigneeModalClick()
     {
-        IsAddClicked = true;
-        var assigneeDetails = await _newAssigneeForm.GetUserDetails();
+        var assignee = new GetUserResponse
+        {
+            Email = email,
+            Id = AssigneeId
+        };
 
         var request = new CreateUserConnectionRequest
         {
-            AssigneeId = assigneeDetails.Id,
+            AssigneeId = AssigneeId,
         };
 
         var client = ApiClientService.GetClient();
-
         var response = await client.PostAsJsonAsync($"api/Account/assignees", request);
 
         if (response is null)
@@ -88,18 +123,16 @@
         }
 
         var result = await response.Content.ReadFromJsonAsync<UserConnectionDto>();
-
         if (result is not null)
         {
-            AssigneeListStateService.SetAssigneeInCache(result);
+            await AssigneeListStateService.SetAssigneeInCacheAsync(result);
 
-            //Add assignee to pending todoItem if origin is EditTodoItemModal or AddTodoItemModal, that way it can be preselected upon restoration
             TodoItemDraftStateService.SetAssigneeInModel(result);
 
-            await OnAssigneeSaved.InvokeAsync(origin);
-            await newAssigneeModal.HideAsync();
+            ToastService.Notify(new(ToastType.Success, "User Added To Your Group!"));
+            await OnAssigneeSaved.InvokeAsync();
         }
 
-        IsAddClicked = false;
+        await newAssigneeModal.HideAsync();
     }
 }

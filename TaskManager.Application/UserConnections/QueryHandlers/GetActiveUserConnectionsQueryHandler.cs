@@ -24,13 +24,13 @@ namespace TaskManager.Application.UserConnections.QueryHandlers
             //Map to DTOs
 
             var connectionDtos = connections.Select(static c => new UserConnectionDto
-            (
-                c.Id, 
-                c.UserId,
-                c.AssigneeId,
-                c.Assignee?.FullName ?? string.Empty,
-                c.Assignee?.Email ?? string.Empty
-                )).ToList();
+            {
+                Id = c.Id,
+                UserId = c.UserId,
+                AssigneeId = c.AssigneeId,
+                AssigneeName = c.Assignee?.FullName ?? string.Empty,
+                AssigneeEmail = c.Assignee?.Email ?? string.Empty
+            }).ToList(); 
 
             return Result<IEnumerable<UserConnectionDto>>.Success(connectionDtos); 
         }
