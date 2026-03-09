@@ -1,6 +1,7 @@
 ﻿@page "/myprojects"
 
 @using BlazorBootstrap
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.QuickGrid
@@ -17,7 +18,7 @@
 @inject ProjectStateService ProjectStateService
 @inject ProjectSortStateService ProjectSortStateService
 @inject AuthenticationStateProvider AuthenticationProvider
-
+@attribute [Authorize]
 @implements IDisposable
 
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
@@ -154,7 +155,6 @@ else
             projectsList.Add(response);
             projects = projectsList.AsQueryable();
 
-            // StateHasChanged();
         }
 
         else 
@@ -165,24 +165,17 @@ else
 
     private async Task ReloadCompletedProjectTile(CompleteProjectResponse response)
     {
-        Console.WriteLine("IN COMPLETED PROJECT RELOAD METHOD");
-        //Chck that the response and projectList are not null
         if (response is not null && projectsList is not null)
         {
             var index = projectsList.FindIndex(p => p.Id == response.ProjectTile.Id);
 
-            //Update the project tile if found
             if (index != -1)
-            {
                 projectsList[index] = response.ProjectTile;
-            }
         }
     }
 }
 
 @code {
-
-    //private Guid Id;
 
     private IQueryable<Application.Projects.DTOs.ProjectTileDto> FilteredProjects =>
         ApplySorting(projects?.Where(m => m.Title!.Contains(projectFilter, StringComparison.OrdinalIgnoreCase)) ??
@@ -196,28 +189,6 @@ else
     private string Message = string.Empty;
     private bool hasLoaded = false;
 
-    // protected override async Task OnAfterRenderAsync(bool firstRender)
-
-    // {
-    //     var authState = await AuthenticationProvider.GetAuthenticationStateAsync();
-    //     if (authState.User.Identity?.IsAuthenticated == true)
-    //     {
-    //         try
-    //         {
-    //             await LoadProjects();
-    //         }
-    //         catch (Exception ex)
-    //         {
-    //             Console.WriteLine("error: " + ex.Message);
-    //         }
-    //     }
-
-    //     if (firstRender)
-    //     {
-    //         StateHasChanged();
-    //     }
-    // }
-
 
     protected override async Task OnInitializedAsync()
     {
@@ -230,24 +201,6 @@ else
         {
             await LoadProjects();
         }
-
-        // try
-        // {
-
-        //     await LoadProjects();
-        // var sortOption = ProjectSortStateService.GetSortingMethod();
-
-        // if (sortOption is not null)
-        // {
-        //     Console.WriteLine("\n PULLING SORT FROM CACHE \n");
-        //     UpdateSort(sortOption ?? SortOption.DateDesc);
-        // }
-        // }
-
-        // catch (Exception ex)
-        // {
-        //     Console.WriteLine("error: " + ex.Message);
-        // }
     }
 
     public async void RefreshState()
@@ -277,11 +230,7 @@ else
         if(hasLoaded) return;
         hasLoaded = true;
 
-        Console.WriteLine("\n In LoadProjects() \n");
-
-        //Load Projects from cache
         var projTiles = await ProjectStateService.GetUserProjectTiles();
-
         if (projTiles is not null && projTiles.Any() && projectsList is not null)
         {
             Console.WriteLine("\n Loading projects from Cache... \n");
@@ -347,7 +296,7 @@ else
             else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
                 errorMessage = "Not authorized. Please log in.";
-                //ToastService.Notify(new(ToastType.Danger, errorMessage));
+                ToastService.Notify(new(ToastType.Danger, errorMessage));
                 await InvokeAsync(() => NavManager.NavigateTo("/login"));
                 return;
             }

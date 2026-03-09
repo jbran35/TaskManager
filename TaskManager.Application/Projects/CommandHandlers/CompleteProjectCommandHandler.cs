@@ -28,7 +28,6 @@ namespace TaskManager.Application.Projects.CommandHandlers
                 return Result<CompleteProjectResponse>.Failure("User not found.");
 
             var project = await _unitOfWork.ProjectRepository.GetProjectWithoutTasksAsync(request.ProjectId, cancellationToken);
-
             if(project is null)
                 return Result<CompleteProjectResponse>.Failure("Project not found.");
 
@@ -42,12 +41,16 @@ namespace TaskManager.Application.Projects.CommandHandlers
             _logger.LogInformation("Marking Complete");
             var result = project.MarkAsComplete();
 
-             if(result.IsFailure)
+            if(result.IsFailure)
+            {
+                _logger.LogInformation("Failed To Mark Tasks As Complete");
                 return Result<CompleteProjectResponse>.Failure(result.ErrorMessage!);
+            }
 
             try
             {
                 _logger.LogInformation("Saving Changes");
+                _unitOfWork.ProjectRepository.Update(project);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 var newProjectTile = new ProjectTileDto
@@ -75,7 +78,6 @@ namespace TaskManager.Application.Projects.CommandHandlers
 
                 _logger.LogInformation("Returning");
                 return Result<CompleteProjectResponse>.Success(response);
-
             }
             catch (Exception ex)
             {

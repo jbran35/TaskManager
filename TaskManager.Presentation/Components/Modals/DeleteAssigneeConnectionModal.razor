@@ -3,6 +3,7 @@
 @using TaskManager.Presentation.Services
 @inject ApiClientService ApiClientService
 @inject AssigneeListStateService AssigneeListStateService
+@inject ProjectStateService ProjectStateService
 
 <Modal @ref="deleteAssigneeModal" Title="Delete Assignee">
     <BodyTemplate>
@@ -54,6 +55,7 @@
 
         ToastService.Notify(new(ToastType.Success, "User Removed From Your Group!"));
         await AssigneeListStateService.RemoveFromCacheAsync(Connection); 
+        await ProjectStateService.UnassignUserFromTasks(Connection.AssigneeId); 
         await deleteAssigneeModal.HideAsync();
         IsDeleteClicked = false;
     }

@@ -6,11 +6,12 @@ using TaskManager.Application.Projects.Mappers;
 using TaskManager.Application.TodoItems.DTOs;
 namespace TaskManager.Presentation.Services
 {
-    public class ProjectStateService(IMemoryCache cache, AuthenticationStateProvider authStateProvider)
+    public class ProjectStateService(IMemoryCache cache, AuthenticationStateProvider authStateProvider, ILogger<ProjectStateService> logger)
     {
 
         private readonly IMemoryCache _cache = cache;
         private readonly AuthenticationStateProvider _authStateProvider = authStateProvider;
+        private readonly ILogger<ProjectStateService> _logger = logger;
 
         public event Action? OnChange;
         private async Task<string> GetUserIdAsync()
@@ -266,6 +267,85 @@ namespace TaskManager.Presentation.Services
             }
         }
 
+        //----------- Updaters ----------- 
+
+
+        public async Task UnassignUserFromTasks(Guid assigneeId)
+        {
+            var tiles = await GetUserProjectTiles();
+
+            if (tiles is null) return; 
+
+            foreach (var tile in tiles)
+            {
+                var project = await GetProjectDetails(tile.Id);
+                if (project is null)
+                    continue;
+
+                var assignedItems = project.TodoItems.Where(t => t.AssigneeId == assigneeId); 
+
+                if (assignedItems.Any())
+                {
+                    foreach (var item in assignedItems)
+                    {
+                        item.AssigneeId = null;
+                        item.AssigneeName = string.Empty; 
+                    }
+
+                    await SetAllProjectDetails(project, false); 
+                }
+            }
+
+            NotifyStateChanged(); 
+        }
+
+
+        public async Task CompleteProject(ProjectTileDto completeTile)
+        {
+            Console.WriteLine("CompleteTile Status: " + completeTile.Status);
+            Console.WriteLine("CompleteTile Total: " + completeTile.TotalTodoItemCount);
+            _logger.LogInformation("In CompleteProject Method"); 
+            if (completeTile is null || completeTile.Id == Guid.Empty) return;
+            _logger.LogInformation("Complete Project: Updating Status & Count For Tile");
+
+            completeTile.Status = Domain.Enums.Status.Complete;
+
+            _logger.LogInformation("Complete Project: Setting Complete Tile In Cache");
+            await SetProjectTile(completeTile, false);
+
+            _logger.LogInformation("Complete Project: Getting Details");
+
+            var projDetails = await GetProjectDetails(completeTile.Id);
+            if (projDetails is null)
+            {
+                _logger.LogInformation("Complete Project: Details Is Null");
+
+                NotifyStateChanged();
+                return;
+            }
+
+            _logger.LogInformation("Complete Project: Updating Details Status");
+
+            projDetails.Status = Domain.Enums.Status.Complete;
+
+            _logger.LogInformation("Complete Project: Finding TodoItems To Update");
+            var itemsToUpdate = projDetails.TodoItems.Where(t => t.Status != Domain.Enums.Status.Deleted && t.Status == Domain.Enums.Status.Incomplete); 
+            foreach (var item in itemsToUpdate)
+            {
+                _logger.LogInformation("Complete Project: Updating Item");
+
+                item.Status = Domain.Enums.Status.Complete;
+            }
+
+            _logger.LogInformation("Complete Project: Updating Count");
+            projDetails.CompleteTodoItemCount = projDetails.TotalTodoItemCount;
+
+            _logger.LogInformation("Complete Project: Setting Details in Cache");
+            await SetAllProjectDetails(projDetails, false);
+
+            NotifyStateChanged();
+
+        }
         public async Task UpdateTodoItemStatus(Guid projectId, Guid todoItemId)
         {
             if (projectId == Guid.Empty || todoItemId == Guid.Empty) return;

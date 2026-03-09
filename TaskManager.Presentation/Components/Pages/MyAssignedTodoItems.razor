@@ -11,17 +11,13 @@
 @using TaskManager.Presentation.Services
 @using System.Security.Claims
 
-
 @inject ApiClientService ApiClientService
 @inject NavigationManager NavManager
 @inject AssignedTodoItemsStateService AssignedTodoItemsStateService
-
 @inject SignalRConnectionService SignalRConnectionService
 
 @implements IDisposable
-
-
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 <PageTitle>My Tasks</PageTitle>
 
@@ -30,7 +26,13 @@
 
 @if (isLoading)
 {
-    <p><em>Loading...</em></p>
+    <body>
+        <div class="container page-center">
+            <div class="d-flex justify-content-center align-items-center vh-100">
+                <Spinner Type="SpinnerType.Dots" Class="me-3" Color="SpinnerColor.Primary" />
+            </div>
+        </div>
+    </body>
 }
 else if (!string.IsNullOrEmpty(errorMessage))
 {

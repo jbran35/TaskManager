@@ -23,7 +23,7 @@
     [Inject] protected ToastService ToastService { get; set; } = default!;
 
     [Parameter] public Guid ProjectId { get; set; }
-    [Parameter] public EventCallback<CompleteProjectResponse> OnProjectCompleted { get; set; }
+    // [Parameter] public EventCallback<CompleteProjectResponse> OnProjectCompleted { get; set; }
 
     private bool IsCompleteClicked = false;
 
@@ -48,20 +48,30 @@
 
         var client = ApiClientService.GetClient(); 
         var response = await client.PatchAsync("api/projects/complete/" + ProjectId.ToString(), null);
-        var result = await response.Content.ReadFromJsonAsync<CompleteProjectResponse>(); 
 
         if (response is null)
-            ToastService.Notify(new(ToastType.Danger, "Unexpected Error Completing Project"));
-
-        else if (!response.IsSuccessStatusCode || result is null)
-            ToastService.Notify(new(ToastType.Danger, await response.Content.ReadAsStringAsync()));
-
-        else if (response.IsSuccessStatusCode)
         {
-            await ProjectStateService.SetProjectTile(result.ProjectTile);
-            ToastService.Notify(new(ToastType.Success, "Project Successfully Completed!"));
-            await OnProjectCompleted.InvokeAsync(result);
-            IsCompleteClicked = false;
+            ToastService.Notify(new(ToastType.Danger, "Unexpected Error Completing Project"));
+            return;
         }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            ToastService.Notify(new(ToastType.Danger, await response.Content.ReadAsStringAsync()));
+            return;
+        }
+        var result = await response.Content.ReadFromJsonAsync<CompleteProjectResponse>();
+
+        if (result is not null)
+        {
+            await ProjectStateService.CompleteProject(result.ProjectTile);
+        }
+
+        ToastService.Notify(new(ToastType.Success, "Project Successfully Completed!"));
+
+
+            // await ProjectStateService.SetProjectTile(result.ProjectTile);
+            // await OnProjectCompleted.InvokeAsync(result);
+            IsCompleteClicked = false;
     }
 }

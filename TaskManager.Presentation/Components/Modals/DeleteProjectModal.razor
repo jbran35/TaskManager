@@ -65,7 +65,6 @@
         if (response.IsSuccessStatusCode)
         {
             await ProjectStateService.RemoveProject(result.ProjectId);
-            // await OnSuccessfulDelete.InvokeAsync();
             ToastService.Notify(new(ToastType.Success, "Project Deleted Successfully!"));
             await deleteProjectModal.HideAsync();
         }
