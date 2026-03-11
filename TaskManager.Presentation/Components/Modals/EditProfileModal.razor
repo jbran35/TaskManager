@@ -15,12 +15,13 @@
 <Modal @ref="editProfileModal"> 
     <BodyTemplate>
         <p>First Name:</p>
-        <EditForm Model="request" OnValidSubmit="OnUpdateProfileClick">
-            
+        <EditForm id="edit-profile-form" Model="request" OnValidSubmit="OnUpdateProfileClick">
+            <AntiforgeryToken />
             <div class="mb-3">
                 <TextInput Class="form-control"
                            @bind-value="request.FirstName"
-                            Disabled="isSaved">
+                           name="FirstName"
+                           Disabled="isSaved">
                 </TextInput>
 
             </div>
@@ -29,6 +30,7 @@
             <div class="mb-3">
                 <TextInput Class="form-control"
                            @bind-value="request.LastName"
+                           name="LastName"
                            Disabled="isSaved">
                 </TextInput>
             </div>
@@ -38,7 +40,8 @@
             <div class="mb-3">
                 <TextInput Class="form-control"
                            @bind-value="request.UserName"
-                           Disabled="isSaved" \>
+                           name="UserName"
+                           Disabled="isSaved">
                 </TextInput>
             </div>
 
@@ -46,6 +49,7 @@
             <div class="mb-3">
                 <TextInput Class="form-control"
                            @bind-value="request.Email"
+                           name="Email"
                            Disabled="isSaved">
                 </TextInput>
             </div>
@@ -54,7 +58,7 @@
 
     <FooterTemplate>
         <Button Color="ButtonColor.Secondary" @onclick="OnHideModalClick" Type="ButtonType.Button">Close</Button>
-        <Button Color="ButtonColor.Dark" Type="ButtonType.Submit" @onclick="OnUpdateProfileClick">Update</Button>
+        <Button Color="ButtonColor.Dark" Type="ButtonType.Submit" Form="edit-profile-form">Update</Button>
     </FooterTemplate>
 </Modal>
 
@@ -89,43 +93,68 @@
 
     private async Task OnUpdateProfileClick()
     {
-        var client = ApiClientService.GetClient(); 
+        // var client = ApiClientService.GetClient(); 
 
+        // var response = await client.PostAsJsonAsync("api/Account/updateprofile", request);
+
+        // Console.WriteLine("Back From API Call For Updating Profile");
+
+        // if (response is null)
+        // {
+        //     Console.WriteLine("Update Profile API Response is null");
+
+        //     ToastService.Notify(new(ToastType.Danger, "Unexpected Error Updating Your Profile"));
+        //     return;
+        // }
+
+        // if (!response.IsSuccessStatusCode)
+        // {
+        //     Console.WriteLine("Update Profile API Response  is not successful");
+
+        //     ToastService.Notify(new(ToastType.Danger, await response.Content.ReadAsStringAsync()));
+        //     return;
+        // }
+
+        // var result = await response.Content.ReadFromJsonAsync<UpdateProfileResponse>();
+
+        // if (result is null)
+        // {
+        //     Console.WriteLine("Result is null");
+
+        //     ToastService.Notify(new(ToastType.Danger, "Unexpected Error Updating Your Profile"));
+        //     return;
+        // }
+
+        // if (client is not null)
+        // {
+        //     await JS.InvokeVoidAsync("forceIdentityRefresh", "/account/refresh-identity", request);
+        // }
+        
+        // ToastService.Notify(new(ToastType.Success, "Profile Updated Successfully"));
+        // await editProfileModal.HideAsync();
+        // isSaved = true;
+        // StateHasChanged(); 
+
+        var client = ApiClientService.GetClient();
         var response = await client.PostAsJsonAsync("api/Account/updateprofile", request);
 
-        Console.WriteLine("Back From API Call For Updating Profile");
-
-        if (response is null)
+        if (response is not null && response.IsSuccessStatusCode)
         {
-            Console.WriteLine("BResponse is null");
-
-            ToastService.Notify(new(ToastType.Danger, "Unexpected Error Updating Your Profile"));
-            return;
+            // 2. Success! Now update the LOCAL session claims.
+            // We trigger the HTML form submit which POSTs to our
+            // local Presentation endpoint: /account/refresh-identity
+            await JS.InvokeVoidAsync("eval", @"
+            var form = document.getElementById('edit-profile-form');
+            form.action = '/account/refresh-identity';
+            form.method = 'post';
+            form.submit();
+        ");
+            // The page will now reload, effectively "refreshing" the NavBar.
+            await editProfileModal.HideAsync();
         }
-
-        if (!response.IsSuccessStatusCode)
+        else
         {
-            Console.WriteLine("BResponse is not successful");
-
-            ToastService.Notify(new(ToastType.Danger, await response.Content.ReadAsStringAsync()));
-            return;
+            ToastService.Notify(new(ToastType.Danger, "Database update failed."));
         }
-
-        var result = await response.Content.ReadFromJsonAsync<UpdateProfileResponse>();
-
-        if (result is null)
-        {
-            Console.WriteLine("Result is null");
-
-            ToastService.Notify(new(ToastType.Danger, "Unexpected Error Updating Your Profile"));
-            return;
-        }
-
-    
-        ToastService.Notify(new(ToastType.Success, "Profile Updated Successfully"));
-        await JS.InvokeVoidAsync("forceIdentityRefresh", "/account/refresh-identity", request);
-        await editProfileModal.HideAsync();
-        isSaved = true;
-        StateHasChanged(); 
     }
 }

@@ -167,18 +167,19 @@ app.MapPost("/account/logout", async (HttpContext context) =>
     return Results.Redirect("/login");
 });
 
+
+//UPDATED VERSION
+
 app.MapPost("/account/refresh-identity", async (
     HttpContext context,
-    [FromForm] string jsonPayload) =>
+    [FromForm] string FirstName, 
+    [FromForm] string LastName,
+    [FromForm] string Email,
+    [FromForm] string UserName) =>
 {
-
-    string? returnUrl = context.Request.Headers["Referer"].ToString();
-    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-    var request = JsonSerializer.Deserialize<UpdateProfileRequest>(jsonPayload, options);
-
     var identity = context.User.Identity as ClaimsIdentity;
 
-    if (identity is null || identity.IsAuthenticated != true || request is null)
+    if (identity is null || identity.IsAuthenticated != true)
     {
         return Results.Redirect("/login");
     }
@@ -196,15 +197,14 @@ app.MapPost("/account/refresh-identity", async (
         {
             identity.RemoveClaim(claim);
         }
-
     }
 
     var claims = new List<Claim>
     {
-        new(ClaimTypes.Name, request.UserName ?? string.Empty),
-        new(ClaimTypes.Email, request.Email ?? string.Empty),
-        new(ClaimTypes.GivenName, request.FirstName ?? string.Empty),
-        new(ClaimTypes.Surname, request.LastName ?? string.Empty),
+        new(ClaimTypes.Name, UserName ?? string.Empty),
+        new(ClaimTypes.Email, Email ?? string.Empty),
+        new(ClaimTypes.GivenName, FirstName ?? string.Empty),
+        new(ClaimTypes.Surname, LastName ?? string.Empty),
         new(ClaimTypes.NameIdentifier, userId ?? string.Empty),
         new("jwt_token", jwtToken ?? string.Empty)
     };
@@ -220,8 +220,66 @@ app.MapPost("/account/refresh-identity", async (
             ExpiresUtc = DateTime.UtcNow.AddMinutes(60)
         });
 
-    return Results.Redirect(returnUrl);
+    return Results.Redirect(context.Request.Headers["Referer"].ToString() ?? "/");
 });
+
+
+
+//app.MapPost("/account/refresh-identity", async (
+//    HttpContext context,
+//    [FromForm] string jsonPayload) =>
+//{
+
+//    string? returnUrl = context.Request.Headers["Referer"].ToString();
+//    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+//    var request = JsonSerializer.Deserialize<UpdateProfileRequest>(jsonPayload, options);
+
+//    var identity = context.User.Identity as ClaimsIdentity;
+
+//    if (identity is null || identity.IsAuthenticated != true || request is null)
+//    {
+//        return Results.Redirect("/login");
+//    }
+
+//    var userId = identity.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+//    var jwtToken = identity.FindFirst("jwt_token")?.Value;
+
+//    var existingClaims = new[] { ClaimTypes.GivenName, ClaimTypes.Surname, ClaimTypes.Name, ClaimTypes.Email };
+
+//    foreach (var type in existingClaims)
+//    {
+//        var claim = identity.FindFirst(type);
+
+//        if (claim is not null)
+//        {
+//            identity.RemoveClaim(claim);
+//        }
+
+//    }
+
+//    var claims = new List<Claim>
+//    {
+//        new(ClaimTypes.Name, request.UserName ?? string.Empty),
+//        new(ClaimTypes.Email, request.Email ?? string.Empty),
+//        new(ClaimTypes.GivenName, request.FirstName ?? string.Empty),
+//        new(ClaimTypes.Surname, request.LastName ?? string.Empty),
+//        new(ClaimTypes.NameIdentifier, userId ?? string.Empty),
+//        new("jwt_token", jwtToken ?? string.Empty)
+//    };
+
+//    var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+
+//    await context.SignInAsync(
+//        CookieAuthenticationDefaults.AuthenticationScheme,
+//        new ClaimsPrincipal(claimsIdentity),
+//        new AuthenticationProperties
+//        {
+//            IsPersistent = true,
+//            ExpiresUtc = DateTime.UtcNow.AddMinutes(60)
+//        });
+
+//    return Results.Redirect(returnUrl);
+//});
 
 app.MapStaticAssets();
 

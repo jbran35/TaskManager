@@ -1,14 +1,10 @@
 ﻿@using BlazorBootstrap
 @using Microsoft.AspNetCore.Components.Authorization
+@using TaskManager.Application.Users.DTOs.Requests
 @using TaskManager.Presentation.Components.Modals
 @using TaskManager.Presentation.Services
 @using System.Security.Claims
-
-@* @inject EditProfileModalService EditProfileModalService *@
 @inject AuthenticationStateProvider AuthStateProvider
-
-
-@* @implements IDisposable *@
 
 @rendermode InteractiveServer
 
@@ -99,7 +95,25 @@
 
 @code {
 
+    EditProfileModal editProfileModal = default!;
+
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
+
+
     protected async override Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var FirstName = user.FindFirst(ClaimTypes.GivenName)?.Value ?? "Couldn't Load First Name";
+        var lastName = user.FindFirst(ClaimTypes.Surname)?.Value ?? string.Empty;
+        var email = user.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
+        var userName = user.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
+    }
+
+    private async Task<UpdateProfileRequest> GetDetails()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
@@ -107,28 +121,39 @@
         var lastName = user.FindFirst(ClaimTypes.Surname)?.Value ?? string.Empty;
         var email = user.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
         var userName = user.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
-      
+
+        return new UpdateProfileRequest
+            {
+                FirstName = firstName,
+                LastName = lastName,
+                Email = email,
+                UserName = userName
+            };
     }
 
     private async Task OnShowEditProfileModal()
     {
+        var details = await GetDetails();
 
-    var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-    var user = authState.User;
-    var firstName = user.FindFirst(ClaimTypes.GivenName)?.Value ?? "Couldn't Load First Name";
-    var lastName = user.FindFirst(ClaimTypes.Surname)?.Value ?? string.Empty;
-    var email = user.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
-    var userName = user.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
+        if (details is not null && !string.IsNullOrEmpty(details.FirstName) && !string.IsNullOrEmpty(details.LastName)
+        && !string.IsNullOrEmpty(details.Email) && !string.IsNullOrEmpty(details.UserName))
+        {
+            await editProfileModal.OnShowEditProfileModalClick(details.FirstName, details.LastName, details.Email, details.UserName);
 
-    await editProfileModal.OnShowEditProfileModalClick(firstName, lastName, email, userName);
+        }
     }
-    private void OnProfileUpdate()
+    private async Task OnProfileUpdate()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var firstName = user.FindFirst(ClaimTypes.GivenName)?.Value ?? "Couldn't Load First Name";
+        var lastName = user.FindFirst(ClaimTypes.Surname)?.Value ?? string.Empty;
+        var email = user.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
+        var userName = user.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
         StateHasChanged();
     }
 
 
-    EditProfileModal editProfileModal = default!;
 
     // public async void OnShowEditProfileModal()
     // {
