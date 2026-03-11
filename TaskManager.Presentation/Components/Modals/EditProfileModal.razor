@@ -140,16 +140,12 @@
 
         if (response is not null && response.IsSuccessStatusCode)
         {
-            // 2. Success! Now update the LOCAL session claims.
-            // We trigger the HTML form submit which POSTs to our
-            // local Presentation endpoint: /account/refresh-identity
             await JS.InvokeVoidAsync("eval", @"
             var form = document.getElementById('edit-profile-form');
             form.action = '/account/refresh-identity';
             form.method = 'post';
             form.submit();
         ");
-            // The page will now reload, effectively "refreshing" the NavBar.
             await editProfileModal.HideAsync();
         }
         else
