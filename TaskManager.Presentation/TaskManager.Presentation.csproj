@@ -7,8 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Remove="Components\Modals\EditProfileModal.razor" />
-    <Content Remove="Components\Pages\EditProfile.razor" />
     <Content Remove="Components\Pages\Error.razor" />
   </ItemGroup>
 

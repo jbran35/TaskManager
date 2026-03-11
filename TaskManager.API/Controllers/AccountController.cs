@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using TaskManager.API.DTOs.Account;
@@ -13,6 +14,7 @@ using TaskManager.Application.Users.DTOs;
 using TaskManager.Application.Users.DTOs.Requests;
 using TaskManager.Application.Users.DTOs.Responses;
 using TaskManager.Application.Users.Queries;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 
 
@@ -83,7 +85,6 @@ namespace TaskManager.API.Controllers
 
         //Endpoint for finding a user by email to add as an assignee connection.
         [HttpGet("search/{userEmail}")]
-
         public async Task<ActionResult<GetUserResponse>> FindUser([FromRoute] string userEmail)
         {
             //Validate User Identity
@@ -175,45 +176,54 @@ namespace TaskManager.API.Controllers
             return Ok(new { Message = "User registered successfully" });
         }
 
-        //[Authorize]
-        //[HttpPost("updateprofile")]
-        //public async Task<ActionResult<UpdateProfileResponse>> UpdateUserInfo([FromBody] UpdateProfileRequest request)
-        //{   //Validate User Identity
-        //    Console.WriteLine("Made it to /updateprofile");
-        //    var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        [Authorize]
+        [HttpPost("updateprofile")]
+        public async Task<ActionResult<UpdateProfileResponse>> UpdateUserInfo([FromBody] UpdateProfileRequest request)
+        {   //Validate User Identity
+            Console.WriteLine("Made it to /updateprofile");
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        //    Console.WriteLine("Starting Auth");
-        //    if (string.IsNullOrEmpty(userIdString))
-        //    {
-        //        return Unauthorized(new { Message = "User ID not found in token" });
-        //    }
+            Console.WriteLine("Starting Auth");
+            if (string.IsNullOrEmpty(userIdString))
+            {
+                return Unauthorized(new { Message = "User ID not found in token" });
+            }
 
-        //    var userId = Guid.Parse(userIdString);
+            var userId = Guid.Parse(userIdString);
 
-        //    request.Id = userId;
+            if (userId != Guid.Empty)
+                request.Id = userId; 
+
+            if (request is null || request.Id == Guid.Empty || request.Id != userId)
+            {
+                return BadRequest(new UpdateProfileResponse { Message = "Bad Request" });
+            }
+
+            Console.WriteLine("Past request validation in endpoint");
+            var command = new UpdateProfileCommand(
+                request.Id, request.FirstName, request.LastName, request.Email, request.UserName);
+
+            Console.WriteLine("Sending command");
+            var result = await _mediator.Send(command);
+            Console.WriteLine("Back from command handler");
+
+            return result.IsSuccess ? Ok(result.Value) : BadRequest(result.ErrorMessage);
+            //Console.WriteLine("Finished Auth");
+
+            //Call Service to complete project
+
+            //Console.WriteLine("Calling Service");
+            //var response = await _updateUserInfoService.UpdateProfileAsync(request);
 
 
-        //    if (request is null || request.Id == Guid.Empty || request.Id != userId)
-        //    {
-        //        return BadRequest(new UpdateProfileResponse { Message = "Bad Request" });
-        //    }
-        //    Console.WriteLine("Finished Auth");
 
+            //if (response is null || !response.Success)
+            //{
+            //    return new UpdateProfileResponse { Message = response?.Message ?? "Issue Updating Profile" };
+            //}
 
-        //    //Call Service to complete project
-
-        //    Console.WriteLine("Calling Service");
-        //    var response = await _updateUserInfoService.UpdateProfileAsync(request);
-
-
-
-        //    if (response is null || !response.Success)
-        //    {
-        //        return new UpdateProfileResponse { Message = response?.Message ?? "Issue Updating Profile" };
-        //    }
-
-        //    return Ok(response);
-        //}
+            //return Ok(response);
+        }
 
 
         //[HttpPost("identity-refresh")]

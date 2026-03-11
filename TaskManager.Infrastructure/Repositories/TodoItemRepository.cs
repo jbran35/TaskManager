@@ -72,7 +72,6 @@ namespace TaskManager.Infrastructure.Repositories
                 .FirstOrDefaultAsync(t => t.Id == todoId && t.Status != Status.Deleted, cancellationToken);
         }
 
-
         public void Update(TodoItem todoItem)
         {
             _context.Update(todoItem);

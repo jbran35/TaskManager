@@ -1,0 +1,46 @@
+﻿@using BlazorBootstrap
+@using TaskManager.Presentation.Enums
+@using TaskManager.Presentation.Services
+@inject ProjectSortStateService ProjectSortStateService
+   <Dropdown Color="DropdownColor.None">
+        <DropdownToggleButton Class="p-0 border-0 shadow-none display:none">
+            <Icon Name="IconName.ArrowDownUp" Size="IconSize.x3" />
+        </DropdownToggleButton>
+
+        <DropdownMenu>
+            <DropdownItem @onclick="@(() => UpdateSort(SortOption.NameAsc))">Name (A-Z)</DropdownItem>
+            <DropdownItem @onclick="@(() => UpdateSort(SortOption.NameDesc))">Name (Z-A)</DropdownItem>
+            <DropdownItem @onclick="@(() => UpdateSort(SortOption.ProgressAsc))">Progress (0-100)</DropdownItem>
+            <DropdownItem @onclick="@(() => UpdateSort(SortOption.ProgressDesc))">Progress (100-0)</DropdownItem>
+            <DropdownItem @onclick="@(() => UpdateSort(SortOption.DateAsc))">Date (Newest - Oldest)</DropdownItem>
+            <DropdownItem @onclick="@(() => UpdateSort(SortOption.DateDesc))">Date (Oldest - Newest)</DropdownItem>
+        </DropdownMenu>
+    </Dropdown>
+
+
+@code {
+    private void UpdateSort(SortOption option)
+    {
+        currentSort = option;
+        ProjectSortStateService.SetSortingMethod(option);
+        StateHasChanged();
+    }
+
+    private SortOption currentSort = SortOption.DateDesc;
+
+    private IQueryable<Application.Projects.DTOs.ProjectTileDto> ApplySorting(IQueryable<Application.Projects.DTOs.ProjectTileDto> query)
+    {
+        return currentSort switch
+        {
+            SortOption.NameAsc => query.OrderBy(p => p.Title),
+            SortOption.NameDesc => query.OrderByDescending(p => p.Title),
+
+            SortOption.ProgressAsc => query.OrderBy(p => p.TotalTodoItemCount != 0.00 ? Math.Round((double)p.CompleteTodoItemCount / p.TotalTodoItemCount * 100, 2) : 0.00),
+            SortOption.ProgressDesc => query.OrderByDescending(p => p.TotalTodoItemCount != 0 ? Math.Round((double)p.CompleteTodoItemCount / p.TotalTodoItemCount * 100, 2) : 0.00),
+
+            SortOption.DateDesc => query.OrderBy(p => p.CreatedOn),
+            SortOption.DateAsc => query.OrderByDescending(p => p.CreatedOn),
+            _ => query
+        };
+    }
+}

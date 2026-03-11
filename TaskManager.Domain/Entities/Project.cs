@@ -1,7 +1,6 @@
 ﻿using TaskManager.Domain.Common;
 using TaskManager.Domain.Enums;
 using TaskManager.Domain.Events;
-using TaskManager.Domain.Interfaces;
 using TaskManager.Domain.ValueObjects;
 
 namespace TaskManager.Domain.Entities
@@ -42,13 +41,14 @@ namespace TaskManager.Domain.Entities
 
             Status = Status.Complete;
 
-            foreach (var todoItem in TodoItems)
-            {
-                if (todoItem.Status != Status.Deleted)
-                {
-                    todoItem.MarkAsComplete();
-                }
-            }
+            //foreach (var todoItem in TodoItems)
+            //{
+            //    if (todoItem.Status != Status.Deleted)
+            //    {
+            //        Console.WriteLine("\n Marking Task As Complete in Entity (project) Method \n");
+            //        todoItem.MarkAsComplete();
+            //    }
+            //}
 
             AddDomainEvent(new ProjectCompletedEvent(this.Id));
 

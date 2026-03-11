@@ -64,11 +64,10 @@
 
         if (result is not null)
         {
-            await ProjectStateService.CompleteProject(result.ProjectTile);
+            await ProjectStateService.SetProjectTile(result.ProjectTile);
         }
 
         ToastService.Notify(new(ToastType.Success, "Project Successfully Completed!"));
-
 
             // await ProjectStateService.SetProjectTile(result.ProjectTile);
             // await OnProjectCompleted.InvokeAsync(result);

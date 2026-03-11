@@ -28,7 +28,6 @@
 <h3 style="text-align: center;"> My Projects </h3>
 <hr />
 
-
 <div class="d-flex mb-3 gap-2">
 
     <Dropdown Color="DropdownColor.None">
@@ -66,7 +65,7 @@
     private void UpdateSort(SortOption option)
     {
         currentSort = option;
-        //ProjectSortStateService.SetSortingMethod(option); 
+        ProjectSortStateService.SetSortingMethod(option); 
         StateHasChanged();
     }
 
@@ -79,8 +78,8 @@
             SortOption.NameAsc => query.OrderBy(p => p.Title),
             SortOption.NameDesc => query.OrderByDescending(p => p.Title),
 
-            // SortOption.ProgressAsc => query.OrderBy(p => p.CompletePercentage),
-            // SortOption.ProgressDesc => query.OrderByDescending(p => p.CompletePercentage),
+            SortOption.ProgressAsc => query.OrderBy(p => p.TotalTodoItemCount != 0.00 ? Math.Round((double)p.CompleteTodoItemCount / p.TotalTodoItemCount * 100, 2) : 0.00),
+            SortOption.ProgressDesc => query.OrderByDescending(p => p.TotalTodoItemCount != 0 ? Math.Round((double)p.CompleteTodoItemCount / p.TotalTodoItemCount * 100, 2) : 0.00),
 
             SortOption.DateDesc => query.OrderBy(p => p.CreatedOn),
             SortOption.DateAsc => query.OrderByDescending(p => p.CreatedOn),
@@ -101,6 +100,14 @@
     </body>
 
 }
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div style="color: red; padding: 10px; border: 1px solid red; margin: 10px 0;">
+        <strong>Error:</strong> @errorMessage
+        <br />
+        <a href="/login">Go to Login</a>
+    </div>
+}
 else if (projects is null || !projects.Any()) 
 {
     <hr class="curved-line" />
@@ -117,8 +124,8 @@ else
             {
                 //OnProjectUpdated = "ReloadProjectTile"
                 <div class="col">
-                    <ProjectTile project="proj"
-                        OnProjectCompleted="ReloadCompletedProjectTile">
+                    <ProjectTile project="proj">
+                        
                     </ProjectTile>
                 </div>
             }
@@ -142,35 +149,6 @@ else
         if (addModal != null)
         {
             await addModal.OnAddProjectModalClick(); 
-        }
-    }
-
-    private async Task AddProjectTile(ProjectTileDto response)
-    {
-        if (response is not null && projectsList is not null)
-        {
-            ToastService.Notify(new(ToastType.Success,"Project Created Successfully"));
-            // await ProjectStateService.SetProjectTile(response);
-
-            projectsList.Add(response);
-            projects = projectsList.AsQueryable();
-
-        }
-
-        else 
-        {
-            ToastService.Notify(new(ToastType.Danger, "Error Creating Project"));
-        }
-    }
-
-    private async Task ReloadCompletedProjectTile(CompleteProjectResponse response)
-    {
-        if (response is not null && projectsList is not null)
-        {
-            var index = projectsList.FindIndex(p => p.Id == response.ProjectTile.Id);
-
-            if (index != -1)
-                projectsList[index] = response.ProjectTile;
         }
     }
 }
@@ -200,6 +178,7 @@ else
         if (authState.User.Identity?.IsAuthenticated == true)
         {
             await LoadProjects();
+
         }
     }
 
@@ -261,12 +240,31 @@ else
                 return;
             }
 
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                errorMessage = "Not authorized. Please log in.";
+                ToastService.Notify(new(ToastType.Danger, errorMessage));
+                await InvokeAsync(() => NavManager.NavigateTo("/login"));
+                return;
+            }
+
             if (!response.IsSuccessStatusCode)
             {
+
                 Console.WriteLine("In unsuccessful block");
-                var errorMessage = await response.Content.ReadAsStringAsync();
+                var errorMessage = response.ToString(); 
+                if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    StateHasChanged();
+                }
+
                 Console.WriteLine("Error: " + errorMessage);
                 ToastService.Notify(new(ToastType.Danger, errorMessage));
+
+
+                //NavManager.NavigateTo("/login"); 
+                ToastService.Notify(new(ToastType.Danger, "Please Log In Again"));
+
                 return;
             }
 
@@ -288,31 +286,26 @@ else
                 else
                 {
                     errorMessage = await response.Content.ReadAsStringAsync();
-                    //ToastService.Notify(new(ToastType.Danger, errorMessage));
+                    ToastService.Notify(new(ToastType.Danger, errorMessage));
                 }
             }
 
             //If unauthorized attempt to load projects
-            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-            {
-                errorMessage = "Not authorized. Please log in.";
-                ToastService.Notify(new(ToastType.Danger, errorMessage));
-                await InvokeAsync(() => NavManager.NavigateTo("/login"));
-                return;
-            }
+           
 
             //General error
             else
             {
                 errorMessage = $"API returned status code: {response.StatusCode}";
-                //ToastService.Notify(new(ToastType.Danger, errorMessage));
+                ToastService.Notify(new(ToastType.Danger, errorMessage));
             }
         }
 
         catch (Exception ex)
         {
             errorMessage = $"Error: {ex.Message}";
-            //ToastService.Notify(new(ToastType.Danger, errorMessage));
+            Console.WriteLine("IN CATCH BLOCK");
+            ToastService.Notify(new(ToastType.Danger, errorMessage));
         }
 
         finally

@@ -23,6 +23,7 @@
 @inject IJSRuntime JSRuntime
 @inject ProjectStateService ProjectStateService
 @inject SignalRConnectionService SignalRConnectionService
+@inject ProjectSortStateService ProjectSortStateService
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 
@@ -100,7 +101,6 @@ else if (!string.IsNullOrEmpty(errorMessage))
     </Button>
         
     </div>
-
 <hr />
 
                                     
@@ -110,7 +110,7 @@ else if (!string.IsNullOrEmpty(errorMessage))
 
     <QuickGrid Items="@FilteredTasks" Pagination="@pagination" Virtualize="false">
 
-        <TemplateColumn Context="task" Align="Align.Center">
+        <TemplateColumn Context="task" Align="Align.Center" Sortable="true">
             <HeaderTemplate>
 
                 <div class="d-flex justify-content-center w-100">
@@ -152,7 +152,10 @@ else if (!string.IsNullOrEmpty(errorMessage))
                 }
 
             </TemplateColumn>
+        <PropertyColumn Property="@(t => t.CreatedOn)" Title="Created On" Sortable="true" Align="Align.Center" />
+
             <PropertyColumn Property="@(t => t.Status)" Title="Status" Sortable="true" />
+
 
             <TemplateColumn Context="task" Title="Actions" Align="Align.Center">
 

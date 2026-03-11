@@ -14,15 +14,12 @@ namespace TaskManager.Application.Common
         private readonly ILogger<CacheInvalidatorHandler<TRequest, TResponse>> _logger = logger; 
         public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
         {
-            Console.WriteLine("\n \n WE ARE IN THE CACHEINVALIDATOR \n \n");
             _logger.LogInformation("In Handle Method"); 
             var response = await next();
 
             if (request is ICacheInvalidator cacheInvalidator && response is Result { IsSuccess: true})
             {
                 _logger.LogInformation("In Handle Method - If Block");
-
-
                 foreach (var key in cacheInvalidator.Keys)
                 {
                     try
@@ -38,7 +35,6 @@ namespace TaskManager.Application.Common
             }
 
             _logger.LogInformation("In Handle Method - Returning");
-
             return response; 
         }
     }

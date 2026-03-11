@@ -1,0 +1,144 @@
+﻿@using BlazorBootstrap
+@using Microsoft.AspNetCore.Components.Authorization
+@using TaskManager.Presentation.Components.Modals
+@using TaskManager.Presentation.Services
+@using System.Security.Claims
+
+@* @inject EditProfileModalService EditProfileModalService *@
+@inject AuthenticationStateProvider AuthStateProvider
+
+
+@* @implements IDisposable *@
+
+@rendermode InteractiveServer
+
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm px-4 py-2">
+            <div class="container-fluid d-flex align-items-center p-0" style="position: relative;">
+
+                
+                <div class="d-flex align-items-center gap-3">
+
+                    <NavLink class="btn text-light border-0 p-2" href="myprojects" title="Home">
+                        <Icon Name="IconName.HouseFill" Size="IconSize.x4" />
+                    </NavLink>
+
+                    <NavLink class="btn text-light border-0 p-2" href="mytasks" title="My Tasks">
+                        <Icon Name="IconName.CardChecklist" Size="IconSize.x4" />
+                    </NavLink>
+
+                    <NavLink class="btn text-light border-0 p-2" href="mygroup" title="My Group">
+                        <Icon Name="IconName.People" Size="IconSize.x4" />
+                    </NavLink>
+                </div>
+
+                <div class="position-absolute start-50 translate-middle-x">    
+                    <a href="projects" > 
+                    <span class="navbar-brand mb-0 display-1 fw-medium corsiva text-light text-decoration-none" style="cursor: pointer;" >
+                        Platinum Tasks</span>
+                    </a>
+                </div>
+
+                @* Profile *@
+                <div class="ms-auto d-flex align-items-center">
+                <AuthorizeView>
+                    <Authorized>
+
+                        <div class="dropdown d-flex align-content-end">
+                            <button class="btn btn-link text-light p-0 dropdown-toggle no-caret"
+                                    type="button"
+                                    data-bs-toggle="dropdown"
+                                    aria-expanded="false">
+                                <Icon Name="IconName.PersonCircle" Size="IconSize.x3" />
+                            </button>
+
+                            <ul class="dropdown-menu dropdown-menu-end shadow-lg mt-2" style="min-width: 300px;">
+                                <li class="px-3 py-2 border-bottom">
+                                    <div class="fw-bold text-dark">@(context.User.FindFirst(System.Security.Claims.ClaimTypes.GivenName)?.Value) 
+                                        @(context.User.FindFirst(System.Security.Claims.ClaimTypes.Surname)?.Value)  </div>
+                                    <p class="text-muted small">
+                                        @(context.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "No Email Claim Found")
+                                    </p>
+                                </li>
+                                <li><a class="dropdown-item mt-2" @onclick="OnShowEditProfileModal">Update Profile</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <form action="/account/logout" method="post" class="px-3">
+                                    <AntiforgeryToken />
+                                    <button type="submit" class="btn btn-link text-danger p-0 m-0 text-decoration-none small">
+                                        <i class="bi bi-box-arrow-right me-2"></i> Logout
+                                    </button>
+                                </form>
+                            </ul>
+                        </div>
+
+                    </Authorized>
+                    <NotAuthorized>
+
+                        <div class="dropdown">
+                            <button class="btn btn-link text-light p-0 dropdown-toggle no-caret"
+                                    type="button"
+                                    data-bs-toggle="dropdown"
+                                    aria-expanded="false">
+                                <Icon Name="IconName.PersonCircle" Size="IconSize.x3" />
+                            </button>
+
+                            <ul class="dropdown-menu dropdown-menu-end shadow-lg mt-2" style="min-width: 300px;">
+                                <li><a class="dropdown-item mt-2" href="/login">Login</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                            </ul>
+                        </div>
+                    </NotAuthorized>
+                </AuthorizeView>
+                </div>
+            </div>
+</nav>
+
+
+<EditProfileModal @ref="editProfileModal" OnProfileUpdate="OnProfileUpdate"> </EditProfileModal>
+
+
+@code {
+
+    protected async override Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var firstName = user.FindFirst(ClaimTypes.GivenName)?.Value ?? "Couldn't Load First Name";
+        var lastName = user.FindFirst(ClaimTypes.Surname)?.Value ?? string.Empty;
+        var email = user.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
+        var userName = user.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
+      
+    }
+
+    private async Task OnShowEditProfileModal()
+    {
+
+    var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+    var user = authState.User;
+    var firstName = user.FindFirst(ClaimTypes.GivenName)?.Value ?? "Couldn't Load First Name";
+    var lastName = user.FindFirst(ClaimTypes.Surname)?.Value ?? string.Empty;
+    var email = user.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
+    var userName = user.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
+
+    await editProfileModal.OnShowEditProfileModalClick(firstName, lastName, email, userName);
+    }
+    private void OnProfileUpdate()
+    {
+        StateHasChanged();
+    }
+
+
+    EditProfileModal editProfileModal = default!;
+
+    // public async void OnShowEditProfileModal()
+    // {
+    //     await InvokeAsync(async () =>
+
+    //         await editProfileModal.OnShowModalAsync()
+    //     );
+    // }
+
+    // public void Dispose() => EditProfileModalService.OnEditProfileModalRequested -= OnShowEditProfileModal;
+
+}
+

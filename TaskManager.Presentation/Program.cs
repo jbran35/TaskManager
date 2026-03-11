@@ -34,6 +34,7 @@ builder.Services.AddScoped<TokenProviderService>();
 builder.Services.AddScoped<SignalRConnectionService>();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<CircuitHandler, CacheCleanupCircuitHandler>();
+//builder.Services.AddScoped<EditProfileModalService>(); 
 
 
 

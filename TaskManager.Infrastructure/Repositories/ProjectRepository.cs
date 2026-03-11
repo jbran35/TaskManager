@@ -10,15 +10,42 @@ namespace TaskManager.Infrastructure.Repositories
     public class ProjectRepository (ApplicationDbContext context) : IProjectRepository
     {
         private readonly ApplicationDbContext _context = context;
-
         public void Add(Project project)
         {
             _context.Projects.Add(project);
         }
 
+        public async Task CompleteProjectTodoItems(Guid projectId, CancellationToken cancellationToken)
+        {
+            await _context.TodoItems
+                .Where(t => t.ProjectId == projectId && t.Status != Status.Incomplete && t.Status != Status.Deleted)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(t => t.Status, Status.Complete), cancellationToken); 
+        }
+
         public void Delete(Project project)
         {
             _context.Projects.Remove(project);
+        }
+
+        //public async Task<IProjectTile> Complete(Guid projectId, CancellationToken cancellation)
+        //{
+        //    //Id, OwnerId, Title, Description, TotalTodoItemCount, CompleteTodoItemCount, CreatedOn, Status
+        //    return await _context.Projects
+        //        .Where(p => p.Id == projectId)
+        //        .Select(p => new ProjectTileDto
+        //        {
+        //            Id = projectId,
+        //            Title = p.Title
+        //        }).ToListAsync(cancellationToken);
+
+        //}
+
+        public async Task<List<TodoItem>> GetAllIncompleteTodoItems(Guid projectId, CancellationToken cancellationToken)
+        {
+            return await _context.TodoItems
+                .Where(t => t.ProjectId == projectId)
+                .ToListAsync(cancellationToken);
         }
 
         public async Task<IReadOnlyList<IProjectTile>> GetAllProjectsByOwnerIdAsync(Guid userId, CancellationToken cancellationToken)

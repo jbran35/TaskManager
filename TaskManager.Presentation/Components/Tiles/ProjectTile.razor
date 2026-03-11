@@ -50,7 +50,6 @@
 @code {
 
     [Parameter] public required ProjectTileDto Project { get; set; }
-    [Parameter] public EventCallback<CompleteProjectResponse> OnProjectCompleted { get; set; }
 
     private Dropdown dropdownElement = default!;
     public bool menuIsOpen = false;
@@ -79,7 +78,6 @@
     {
         if(completedProj is not null)
         {
-            await OnProjectCompleted.InvokeAsync(completedProj);
         }
     }
 

@@ -11,7 +11,8 @@ using TaskManager.Domain.Interfaces;
 
 namespace TaskManager.Application.Projects.CommandHandlers
 {
-    public class DeleteProjectCommandHandler(IUnitOfWork unitOfWork, UserManager<User> userManager, IDistributedCache cache, ILogger<DeleteProjectCommandHandler> logger) : IRequestHandler<DeleteProjectCommand, Result<DeleteProjectResponse>>
+    public class DeleteProjectCommandHandler(IUnitOfWork unitOfWork, UserManager<User> userManager, IDistributedCache cache, ILogger<DeleteProjectCommandHandler> logger) 
+        : IRequestHandler<DeleteProjectCommand, Result<DeleteProjectResponse>>
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork; 
         private readonly UserManager<User> _userManager = userManager;

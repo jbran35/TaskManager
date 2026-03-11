@@ -1,19 +1,21 @@
 ﻿@using BlazorBootstrap
 @using TaskManager.Application.Interfaces
 @using TaskManager.Application.Users.DTOs
+@using TaskManager.Application.Users.DTOs.Requests
+@using TaskManager.Application.Users.DTOs.Responses
 @using TaskManager.Presentation.Components.Pages 
 @inject IHttpClientFactory ClientFactory
 @inject HttpClient Http
 @inject NavigationManager NavManager
 @inject IJSRuntime JS
+@inject ApiClientService ApiClientService
 @using TaskManager.Presentation.Services
+@rendermode InteractiveServer
 
 <Modal @ref="editProfileModal"> 
-
     <BodyTemplate>
         <p>First Name:</p>
         <EditForm Model="request" OnValidSubmit="OnUpdateProfileClick">
-            
             
             <div class="mb-3">
                 <TextInput Class="form-control"
@@ -54,8 +56,6 @@
         <Button Color="ButtonColor.Secondary" @onclick="OnHideModalClick" Type="ButtonType.Button">Close</Button>
         <Button Color="ButtonColor.Dark" Type="ButtonType.Submit" @onclick="OnUpdateProfileClick">Update</Button>
     </FooterTemplate>
-        
-
 </Modal>
 
 @code {
@@ -70,11 +70,15 @@
 
     public async Task OnShowEditProfileModalClick(string firstName, string lastName, string email, string userName)
     {
-
         request.FirstName = firstName;
         request.LastName = lastName;
         request.Email = email;
         request.UserName = userName;
+        await editProfileModal.ShowAsync(); 
+    }
+
+    public async Task OnShowModalAsync()
+    {
         await editProfileModal.ShowAsync(); 
     }
 
@@ -85,24 +89,43 @@
 
     private async Task OnUpdateProfileClick()
     {
-        var response = await Http.PostAsJsonAsync("api/Account/updateprofile", request);
+        var client = ApiClientService.GetClient(); 
+
+        var response = await client.PostAsJsonAsync("api/Account/updateprofile", request);
+
+        Console.WriteLine("Back From API Call For Updating Profile");
+
+        if (response is null)
+        {
+            Console.WriteLine("BResponse is null");
+
+            ToastService.Notify(new(ToastType.Danger, "Unexpected Error Updating Your Profile"));
+            return;
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            Console.WriteLine("BResponse is not successful");
+
+            ToastService.Notify(new(ToastType.Danger, await response.Content.ReadAsStringAsync()));
+            return;
+        }
+
         var result = await response.Content.ReadFromJsonAsync<UpdateProfileResponse>();
 
-        if (result is null || !result.Success)
+        if (result is null)
         {
-            ToastService.Notify(new(ToastType.Danger, result?.Message ?? "Bad Request"));
+            Console.WriteLine("Result is null");
+
+            ToastService.Notify(new(ToastType.Danger, "Unexpected Error Updating Your Profile"));
             return;
-
         }
 
-        else if (result.Success)
-        {
-            //ToastService.Notify(new(ToastType.Success, result?.Message ?? "Bad Request"));
-
-            await JS.InvokeVoidAsync("forceIdentityRefresh", "/account/refresh-identity", request);
-            //await editProfileModal.HideAsync();
-            isSaved = true;
-            StateHasChanged(); 
-        }
+    
+        ToastService.Notify(new(ToastType.Success, "Profile Updated Successfully"));
+        await JS.InvokeVoidAsync("forceIdentityRefresh", "/account/refresh-identity", request);
+        await editProfileModal.HideAsync();
+        isSaved = true;
+        StateHasChanged(); 
     }
 }

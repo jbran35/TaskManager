@@ -27,7 +27,7 @@ namespace TaskManager.Application.Projects.CommandHandlers
             if (user is null)
                 return Result<CompleteProjectResponse>.Failure("User not found.");
 
-            var project = await _unitOfWork.ProjectRepository.GetProjectWithoutTasksAsync(request.ProjectId, cancellationToken);
+            var project = await _unitOfWork.ProjectRepository.GetProjectWithTasksAsync(request.ProjectId, cancellationToken);
             if(project is null)
                 return Result<CompleteProjectResponse>.Failure("Project not found.");
 
@@ -39,16 +39,19 @@ namespace TaskManager.Application.Projects.CommandHandlers
             var assigneeIds = await _unitOfWork.ProjectRepository.GetProjectTodoItemAssigneeIds(request.ProjectId, cancellationToken);
 
             _logger.LogInformation("Marking Complete");
-            var result = project.MarkAsComplete();
+            //var result = project.MarkAsComplete();
 
-            if(result.IsFailure)
-            {
-                _logger.LogInformation("Failed To Mark Tasks As Complete");
-                return Result<CompleteProjectResponse>.Failure(result.ErrorMessage!);
-            }
+
+            //if(result.IsFailure)
+            //{
+            //    _logger.LogInformation("Failed To Mark Tasks As Complete");
+            //    return Result<CompleteProjectResponse>.Failure(result.ErrorMessage!);
+            //}
 
             try
             {
+                await _unitOfWork.ProjectRepository.CompleteProjectTodoItems(project.Id, cancellationToken);
+
                 _logger.LogInformation("Saving Changes");
                 _unitOfWork.ProjectRepository.Update(project);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -58,10 +61,10 @@ namespace TaskManager.Application.Projects.CommandHandlers
                     Id = project.Id,
                     Title = project.Title,
                     TotalTodoItemCount = project.TodoItems.Count,
-                    CompleteTodoItemCount = project.TodoItems.Where(t => t.Status == Domain.Enums.Status.Complete).Count(),
+                    CompleteTodoItemCount = project.TodoItems.Count,
                     CreatedOn = project.CreatedOn,
-                    Status = project.Status
-                };
+                    Status = Domain.Enums.Status.Complete
+                }; 
 
                 var response = new CompleteProjectResponse(newProjectTile);
 
@@ -75,6 +78,8 @@ namespace TaskManager.Application.Projects.CommandHandlers
                         await _cache.RemoveAsync(CacheKeys.AssignedTodoItems(key), CancellationToken.None);
                     }
                 }
+
+                //await _cache.RemoveAsync(CacheKeys.ProjectTiles(user.Id), CancellationToken.None); 
 
                 _logger.LogInformation("Returning");
                 return Result<CompleteProjectResponse>.Success(response);

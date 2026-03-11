@@ -22,6 +22,14 @@ namespace TaskManager.Domain.Interfaces
         /// <returns>A task that represents the asynchronous operation of deleting the project.</returns>
         void Delete(Project projectId);
 
+ 
+        /// <summary>
+        ///     Used to complete all incomplete todo items when a project is marked as complete from the dashboard.
+        /// </summary>
+        /// <param name="projectId"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        Task CompleteProjectTodoItems(Guid projectId, CancellationToken cancellationToken);
 
 
         /// <summary>
